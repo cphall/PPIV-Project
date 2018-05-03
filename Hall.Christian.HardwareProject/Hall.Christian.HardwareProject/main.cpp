@@ -31,8 +31,8 @@ using namespace std;
 using namespace DirectX;
 // TODO: PART 2 STEP 6
 
-#define BACKBUFFER_WIDTH	500
-#define BACKBUFFER_HEIGHT	500
+#define BACKBUFFER_WIDTH	1920
+#define BACKBUFFER_HEIGHT	1080
 #define _DEBUG 0
 #define NUMVERTS 369
 #define NUMTVERTS 2400
@@ -84,7 +84,8 @@ public:
 	// TODO: PART 2 STEP 1
 	struct SIMPLE_VERTEX
 	{
-		XMFLOAT2 pos;
+		XMFLOAT4 pos;
+		XMFLOAT2 uv;
 		XMFLOAT4 rgba;
 	};
 	bool reverseX = false;
@@ -234,21 +235,17 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	triangleInitData.SysMemPitch = 0;
 	triangleInitData.SysMemSlicePitch = 0;
 	hr = device->CreateBuffer(&trianglebufferDesc, &triangleInitData, &triangleVertBuffer);
-	// TODO: PART 2 STEP 5
-	// ADD SHADERS TO PROJECT, SET BUILD OPTIONS & COMPILE
-
-	// TODO: PART 2 STEP 7
+	
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
-	// TODO: PART 2 STEP 8a
-	D3D11_INPUT_ELEMENT_DESC vLayout[2] =
+	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
+	D3D11_INPUT_ELEMENT_DESC vLayout[3] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
-	// TODO: PART 2 STEP 8b
-	device->CreateInputLayout(vLayout, 2, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
-	// TODO: PART 3 STEP 3
+	device->CreateInputLayout(vLayout, 3, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
+
 	D3D11_BUFFER_DESC cbufferDesc;
 	ZeroMemory(&cbufferDesc, sizeof(D3D11_BUFFER_DESC));
 	cbufferDesc.Usage = D3D11_USAGE_DYNAMIC;
