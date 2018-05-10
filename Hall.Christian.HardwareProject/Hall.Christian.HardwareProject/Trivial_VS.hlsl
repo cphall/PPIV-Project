@@ -1,35 +1,57 @@
-struct INPUT_VERTEX
+#pragma pack_matrix( row_major )
+struct VS_IN
 {
-	float2 coordinate : POSITION;
+	float3 posL : POSITION;
+	float4 rgba : COLOR;
 };
 
-struct OUTPUT_VERTEX
+struct VS_OUT
 {
-	float4 colorOut : COLOR;
-	float4 projectedCoordinate : SV_POSITION;
+	float4 posH : SV_POSITION;
+	float4 clr : COLOR;
 };
 
-// TODO: PART 3 STEP 2a
-cbuffer THIS_IS_VRAM : register( b0 )
+cbuffer OBJECT_DATA : register( b0 )
 {
-	float4 constantColor;
+	float4x4 worldMatrix;
+	float4 rgba;
+};
+
+
+cbuffer SCENE : register( b1 )
+{
+	/*float4 constantColor;
 	float2 constantOffset;
-	float2 padding;
+	float2 padding;*/
+
+	//Matricies
+	//float4x4 matWorld;
+	float4x4 viewMatrix;
+	/*float4x4 matRotateX;
+	float4x4 matRotateY;
+	float4x4 matRotateZ;
+	float4x4 matScale;
+	float4x4 matTranslate;*/
+	float4x4 projMatrix;
+	/*float4x4 matFinal;*/
 };
 
-OUTPUT_VERTEX main( INPUT_VERTEX fromVertexBuffer )
+VS_OUT main( VS_IN input )
 {
-	OUTPUT_VERTEX sendToRasterizer = (OUTPUT_VERTEX)0;
-	sendToRasterizer.projectedCoordinate.w = 1;
+	VS_OUT sendToRasterizer = (VS_OUT)0;
+	/*sendToRasterizer.projectedCoordinate.w = 1;
 	
 	sendToRasterizer.projectedCoordinate.xy = fromVertexBuffer.coordinate.xy;
 		
-	// TODO : PART 4 STEP 4
 	sendToRasterizer.projectedCoordinate.xy += constantOffset;
 	
-	// TODO : PART 3 STEP 7
 	sendToRasterizer.colorOut = constantColor;
-	// END PART 3
+
+	sendToRasterizer.*/
+	float4 localH = float4(input.posL, 1);
+	localH = mul(localH, worldMatrix);
+	localH = mul(localH, viewMatrix);
+	localH = mul(localH, projMatrix);
 
 	return sendToRasterizer;
 }
