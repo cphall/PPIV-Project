@@ -56,6 +56,7 @@ class DEMO_APP
 	ID3D11Texture2D* BackBuffer;
 	
 	ID3D11Buffer *vertBuffer;
+	ID3D11Buffer *indexBuffer;
 	ID3D11InputLayout *inputLayout;
 	unsigned int numVerts = NUMVERTS;
 	
@@ -77,6 +78,22 @@ class DEMO_APP
 	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 	float NearZ = 0.1f;
 	float FarZ = 100.0f;
+	unsigned int indexCount;
+	unsigned int cubeIndices[36] =
+	{
+		0,1,2,
+		1,3,2,
+		4,6,5,
+		5,6,7,
+		0,5,1,
+		0,4,5,
+		2,7,6,
+		2,3,7,
+		0,6,4,
+		0,2,6,
+		1,7,3,
+		1,5,7,
+	};
 
 	struct WM_TO_VRAM
 	{
@@ -185,37 +202,46 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	triArr[1].rgba = { 0.0f, 1.0f, 0.0f,1.0f };
 	triArr[2].pos = { -0.5f, -0.5f, 0.0f };
 	triArr[2].rgba = { 0.0f, 0.0f, 1.0f,1.0f };
+
+	static const SIMPLE_VERTEX cubeVerts[] =
+	{
+	{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+	{ XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
+	{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
+	{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+	{ XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
+	};
 	
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 3;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 8;
 	bufferDesc.MiscFlags = 0;
     
 	D3D11_SUBRESOURCE_DATA InitData;
 	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	InitData.pSysMem = triArr;
+	InitData.pSysMem = cubeVerts;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 	
 	hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
 	
-	//D3D11_BUFFER_DESC trianglebufferDesc;
-	//ZeroMemory(&trianglebufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//trianglebufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
-	//trianglebufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//trianglebufferDesc.CPUAccessFlags = NULL; //may need to be D3D11_CPU_ACCESS_WRITE later
-	//trianglebufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * NUMTVERTS;
-	//trianglebufferDesc.MiscFlags = 0;
-	//D3D11_SUBRESOURCE_DATA triangleInitData;
-	//ZeroMemory(&triangleInitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	//triangleInitData.pSysMem = vertTArr;
-	//triangleInitData.SysMemPitch = 0;
-	//triangleInitData.SysMemSlicePitch = 0;
-	//hr = device->CreateBuffer(&trianglebufferDesc, &triangleInitData, &triangleVertBuffer);
 	
+	
+	D3D11_BUFFER_DESC ibufferDesc;
+	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * 36;
+	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	ibufferDesc.MiscFlags = 0;
+
+	device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
@@ -298,6 +324,11 @@ bool DEMO_APP::Run()
 	
 	UINT stride = sizeof(SIMPLE_VERTEX);
 	UINT offset = 0;
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
+	memcpy(mappedResource.pData, cubeIndices, sizeof(cubeIndices));
+	context->Unmap(indexBuffer, NULL);
 	
 	D3D11_MAPPED_SUBRESOURCE subResource;
 	ZeroMemory(&subResource, sizeof(subResource));
@@ -317,6 +348,7 @@ bool DEMO_APP::Run()
 	context->VSSetConstantBuffers(1, 1, &constBuffer2);
 	
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	
 	context->VSSetShader(vertShader, NULL, 0);
 	context->PSSetShader(pixShader, NULL, 0);
@@ -325,7 +357,7 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	context->Draw(3, 0);
+	context->DrawIndexed(36,0, 0);
 	
 	swapChain->Present(0, 0);
 	return true; 
