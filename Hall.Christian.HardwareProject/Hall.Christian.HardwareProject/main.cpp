@@ -18,6 +18,7 @@
 #include "XTime.h"
 #include "Trivial_PS.csh"
 #include "Trivial_VS.csh"
+#include "WolfOBJ.h"
 #include <Windows.h>
 #include <windowsx.h>
 #include <DirectXMath.h>
@@ -119,9 +120,10 @@ public:
 	{
 		XMFLOAT3 pos;
 		XMFLOAT4 rgba;
-		XMFLOAT2 uv;
+		XMFLOAT3 uvw;
 		XMFLOAT3 norm;
 	};
+	SIMPLE_VERTEX wolfModel[1981];
 	bool reverseX = false;
 	bool reverseY = false;
 	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
@@ -160,6 +162,23 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	ShowWindow(window, SW_SHOW);
 	//********************* END WARNING ************************//
+	for (unsigned int i = 0; i < 1981; i++)
+	{
+		wolfModel[i].pos.x = WolfOBJ_data[i].pos[0];
+		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
+		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
+		//color
+		wolfModel[i].rgba = { 0.0f, 0.0f, 0.0f, 0.0f };
+		//uvw
+		wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
+		wolfModel[i].uvw.y = WolfOBJ_data[i].uvw[1];
+		wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
+		//norms
+		wolfModel[i].norm.x = WolfOBJ_data[i].nrm[0];
+		wolfModel[i].norm.y = WolfOBJ_data[i].nrm[1];
+		wolfModel[i].norm.z = WolfOBJ_data[i].nrm[2];
+	}
+
 
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -169,7 +188,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	swapDesc.BufferCount = 1;
 	swapDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapDesc.Windowed = true;
-	swapDesc.SampleDesc.Count = 1; //no aa
+	swapDesc.SampleDesc.Count = 4; //no aa
 	swapDesc.SampleDesc.Quality = 0;
 	swapDesc.OutputWindow = window;
 	swapDesc.BufferDesc.RefreshRate.Denominator = 1;
@@ -214,22 +233,20 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 8;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 1981;
 	bufferDesc.MiscFlags = 0;
     
 	D3D11_SUBRESOURCE_DATA InitData;
 	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	InitData.pSysMem = cubeVerts;
+	InitData.pSysMem = /*cubeVerts*/ wolfModel;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 	
 	hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
 	
-	
-	
 	D3D11_BUFFER_DESC ibufferDesc;
 	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	ibufferDesc.ByteWidth = sizeof(unsigned int) * 36;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * 6114;
 	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	ibufferDesc.MiscFlags = 0;
@@ -243,8 +260,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 	device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
 
@@ -323,7 +340,7 @@ bool DEMO_APP::Run()
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
-	memcpy(mappedResource.pData, cubeIndices, sizeof(cubeIndices));
+	memcpy(mappedResource.pData, WolfOBJ_indicies, sizeof(WolfOBJ_indicies));
 	context->Unmap(indexBuffer, NULL);
 	
 	D3D11_MAPPED_SUBRESOURCE subResource;
@@ -353,7 +370,7 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	context->DrawIndexed(36,0, 0);
+	context->DrawIndexed(6114,0, 0);
 	
 	swapChain->Present(0, 0);
 	return true; 
