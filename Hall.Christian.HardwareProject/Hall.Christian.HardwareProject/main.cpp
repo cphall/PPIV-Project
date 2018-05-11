@@ -34,9 +34,9 @@ using namespace DirectX;
 #define _DEBUG 0
 #define NUMVERTS 369
 #define NUMTVERTS 2400
-#define CAMERAEYEX 50
-#define CAMERAEYEY 50
-#define CAMERAEYEZ 50
+#define CAMERAEYEX 0
+#define CAMERAEYEY 0
+#define CAMERAEYEZ -5
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -73,9 +73,9 @@ class DEMO_APP
 	XMMATRIX matrixTranslate;
 	XMMATRIX matrixRotateX;
 
-	float fovAngleY = 45.0f;
-	float AspectRatio = SCREEN_WIDTH / SCREEN_HEIGHT;
-	float NearZ = 1.0f;
+	float fovAngleY = 65.0f;
+	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	float NearZ = 0.1f;
 	float FarZ = 100.0f;
 
 	struct WM_TO_VRAM
@@ -85,11 +85,6 @@ class DEMO_APP
 		XMFLOAT2 padding;*/
 		XMMATRIX worldMatrix;
 		XMFLOAT4 constantColor;
-		/*XMMATRIX matRotateX;
-		XMMATRIX matRotateY;
-		XMMATRIX matRotateZ;
-		XMMATRIX matScale;
-		XMMATRIX matTranslate;*/
 	};
 	struct VPM_TO_VRAM
 	{
@@ -181,20 +176,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	viewport.TopLeftY = 0;
 
 	const float PI = 3.1415927;
-	//SIMPLE_VERTEX vertArr[NUMVERTS];
-	//for (unsigned int i = 0; i < NUMVERTS; i++)
-	//{
-	//	float sin = sinf(i * ( PI/ 180));
-	//	float cos = cosf(i * (PI / 180));
-	//	vertArr[i].pos = { cos, sin };
-	//	vertArr[i].rgba = { 0.0f, 0.0f, 0.0f, 0.0f };
-	//}
-	// BEGIN PART 4
-	// TODO: PART 4 STEP 1
-	/*for (unsigned int i = 0; i < NUMVERTS; i++)
-	{
-		vertArr[i].pos = { vertArr[i].pos.x * .20f, vertArr[i].pos.y * .20f };
-	}*/
+	
+	//OUR TRIANGLE
 	SIMPLE_VERTEX triArr[3];
 	triArr[0].pos = { 0.0f, 0.5f, 0.0f };
 	triArr[0].rgba = { 1.0f, 0.0f, 0.0f,1.0f };
@@ -257,23 +240,23 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	cbInitData.SysMemPitch = 0;
 	cbInitData.SysMemSlicePitch = 0;
 
-	hr = device->CreateBuffer(&cbufferDesc, &InitData, &constBuffer);
+	hr = device->CreateBuffer(&cbufferDesc, &cbInitData, &constBuffer);
 
 	D3D11_BUFFER_DESC cbufferDesc2;
-	ZeroMemory(&cbufferDesc, sizeof(D3D11_BUFFER_DESC));
-	cbufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	cbufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // allows cpu to modify our data at runtime
-	cbufferDesc.MiscFlags = 0;
-	cbufferDesc.ByteWidth = sizeof(WM_TO_VRAM); //May need to redo this stuff for this buffer?
+	ZeroMemory(&cbufferDesc2, sizeof(D3D11_BUFFER_DESC));
+	cbufferDesc2.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferDesc2.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferDesc2.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // allows cpu to modify our data at runtime
+	cbufferDesc2.MiscFlags = 0;
+	cbufferDesc2.ByteWidth = sizeof(VPM_TO_VRAM); //May need to redo this stuff for this buffer?
 
 	D3D11_SUBRESOURCE_DATA cbInitData2;
-	ZeroMemory(&cbInitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	cbInitData.pSysMem = &VPMToShader;
-	cbInitData.SysMemPitch = 0;
-	cbInitData.SysMemSlicePitch = 0;
+	ZeroMemory(&cbInitData2, sizeof(D3D11_SUBRESOURCE_DATA));
+	cbInitData2.pSysMem = &VPMToShader;
+	cbInitData2.SysMemPitch = 0;
+	cbInitData2.SysMemSlicePitch = 0;
 
-	hr = device->CreateBuffer(&cbufferDesc, &InitData, &constBuffer2);
+	hr = device->CreateBuffer(&cbufferDesc2, &cbInitData2, &constBuffer2);
 
 	//toShader.constantOffset = { 0.0f, 0.0f };
 	WMToShader.constantColor = { 1.0f, 1.0f, 0.0f, 0.0f };
@@ -286,7 +269,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	toShader.matTranslate = XMMatrixIdentity();
 	toShader.matRotateX = XMMatrixRotationX(XMConvertToRadians(90.0f));
 	toShader.matScale = XMMatrixScaling(1.5f, 1.5f, 1.5f);*/
-	matrixTranslate = XMMatrixTranslation(6.0f, 2.0f, 0.0f);
+	matrixTranslate = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
 	FXMVECTOR at = { 0.0f, 0.0f, 0.0f };
@@ -304,7 +287,7 @@ bool DEMO_APP::Run()
 {
 	timer.Signal();
 	matrixRotateX = XMMatrixIdentity();
-	matrixRotateX = XMMatrixRotationX(timer.SmoothDelta() * XMConvertToRadians(90.0f));
+	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
 
 	context->OMSetRenderTargets(1, &targetView, NULL);
@@ -327,11 +310,11 @@ bool DEMO_APP::Run()
 	D3D11_MAPPED_SUBRESOURCE subResource2;
 	ZeroMemory(&subResource2, sizeof(subResource2));
 	context->Map(constBuffer2, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource2);
-	memcpy(subResource2.pData, &VPMToShader, sizeof(WM_TO_VRAM));
+	memcpy(subResource2.pData, &VPMToShader, sizeof(VPM_TO_VRAM));
 	context->Unmap(constBuffer2, NULL);
 
 	context->VSSetConstantBuffers(0, 1, &constBuffer);
-	context->VSSetConstantBuffers(0, 1, &constBuffer2);
+	context->VSSetConstantBuffers(1, 1, &constBuffer2);
 	
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
 	
@@ -362,6 +345,7 @@ bool DEMO_APP::ShutDown()
 	BackBuffer->Release();
 	vertBuffer->Release();
 	constBuffer->Release();
+	constBuffer2->Release();
 	pixShader->Release();
 	vertShader->Release();
 	UnregisterClass( L"DirectXApplication", application ); 

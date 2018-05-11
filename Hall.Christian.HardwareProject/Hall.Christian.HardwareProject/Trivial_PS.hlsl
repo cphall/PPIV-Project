@@ -1,4 +1,11 @@
-float4 main( float4 colorFromRasterizer : COLOR ) : SV_TARGET
+
+struct PS_IN
 {
-	return colorFromRasterizer;
+	float4 posH : SV_POSITION;
+	float4 clr : COLOR;
+};
+
+float4 main(PS_IN input) : SV_TARGET
+{
+	return input.clr;
 }
