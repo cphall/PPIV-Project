@@ -110,10 +110,10 @@ class DEMO_APP
 	{
 		XMMATRIX viewMatrix;
 		XMMATRIX projMatrix;
+		XMMATRIX rotMatrix;
 		XMFLOAT4 lightVector;
 		XMFLOAT4 lightClr;
 		XMFLOAT4 ambientClr;
-		XMMATRIX rotMatrix;
 	};
 
 	WM_TO_VRAM WMToShader;
@@ -124,8 +124,8 @@ public:
 	struct SIMPLE_VERTEX
 	{
 		XMFLOAT3 pos;
-		XMFLOAT3 uvw;
 		XMFLOAT3 norm;
+		//XMFLOAT3 uvw;
 	};
 	SIMPLE_VERTEX wolfModel[1981];
 	bool reverseX = false;
@@ -172,9 +172,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
 		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
 		//uvw
-		wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
+		/*wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
 		wolfModel[i].uvw.y = WolfOBJ_data[i].uvw[1];
-		wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
+		wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];*/
 		//norms
 		wolfModel[i].norm.x = WolfOBJ_data[i].nrm[0];
 		wolfModel[i].norm.y = WolfOBJ_data[i].nrm[1];
@@ -261,8 +261,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		//{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
 

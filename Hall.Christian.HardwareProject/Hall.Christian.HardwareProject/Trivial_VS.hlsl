@@ -2,24 +2,23 @@
 struct VS_IN
 {
 	float3 posL : POSITION;
-	//float4 rgba : COLOR;
 	float3 norm : NORMAL;
-	float2 uv : TEXTCOORD;
+	//float4 color : COLOR;
+	//float2 uv : TEXTCOORD;
 };
 
 struct VS_OUT
 {
 	float4 posH : SV_POSITION;
-	//float4 clr : COLOR;
 	float4 color : COLOR;
-	float4 norm : NORMAL;
-	float2 uv : TEXTCOORD;
+	//float4 norm : NORMAL;
+	//float2 uv : TEXTCOORD;
 };
 
 cbuffer OBJECT_DATA : register( b0 )
 {
 	float4x4 worldMatrix;
-	float4 rgba;
+	//float4 rgba;
 };
 
 
