@@ -2,17 +2,18 @@
 struct VS_IN
 {
 	float3 posL : POSITION;
-	float4 rgba : COLOR;
-	float2 uv : TEXTCOORD;
+	//float4 rgba : COLOR;
 	float3 norm : NORMAL;
+	float2 uv : TEXTCOORD;
 };
 
 struct VS_OUT
 {
 	float4 posH : SV_POSITION;
-	float4 clr : COLOR;
+	//float4 clr : COLOR;
+	float4 color : COLOR;
+	float4 norm : NORMAL;
 	float2 uv : TEXTCOORD;
-	float3 norm : NORMAL;
 };
 
 cbuffer OBJECT_DATA : register( b0 )
@@ -26,6 +27,10 @@ cbuffer SCENE : register( b1 )
 {
 	float4x4 viewMatrix;
 	float4x4 projMatrix;
+	float4x4 rotMatrix;
+	float4 lightVector;
+	float4 lightClr;
+	float4 ambientClr;
 };
 
 VS_OUT main( VS_IN input )
@@ -38,9 +43,11 @@ VS_OUT main( VS_IN input )
 	localH = mul(localH, projMatrix);
 
 	sendToRasterizer.posH = localH;
-	sendToRasterizer.clr = input.rgba;
-	sendToRasterizer.uv = input.uv;
-	sendToRasterizer.norm = input.norm;
+	sendToRasterizer.color = ambientClr;
+	//sendToRasterizer.uv = input.uv;
+	float4 norm = normalize(mul(rotMatrix, input.norm));
+	float diffuse = saturate(dot(norm, lightVector));
+	sendToRasterizer.color += lightClr * diffuse;
 
 	return sendToRasterizer;
 }

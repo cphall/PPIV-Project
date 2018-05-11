@@ -36,9 +36,10 @@ using namespace DirectX;
 #define NUMVERTS 369
 #define NUMTVERTS 2400
 #define CAMERAEYEX 0
-#define CAMERAEYEY 0
-#define CAMERAEYEZ -5
-#define LAYOUTSIZE 4
+#define CAMERAEYEY 3
+#define CAMERAEYEZ -3
+#define LAYOUTSIZE 3
+#define FOV 45.0f
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -76,7 +77,7 @@ class DEMO_APP
 	XMMATRIX matrixTranslate;
 	XMMATRIX matrixRotateX;
 
-	float fovAngleY = 65.0f;
+	float fovAngleY = FOV;
 	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 	float NearZ = 0.1f;
 	float FarZ = 100.0f;
@@ -109,6 +110,10 @@ class DEMO_APP
 	{
 		XMMATRIX viewMatrix;
 		XMMATRIX projMatrix;
+		XMFLOAT4 lightVector;
+		XMFLOAT4 lightClr;
+		XMFLOAT4 ambientClr;
+		XMMATRIX rotMatrix;
 	};
 
 	WM_TO_VRAM WMToShader;
@@ -119,7 +124,6 @@ public:
 	struct SIMPLE_VERTEX
 	{
 		XMFLOAT3 pos;
-		XMFLOAT4 rgba;
 		XMFLOAT3 uvw;
 		XMFLOAT3 norm;
 	};
@@ -167,8 +171,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		wolfModel[i].pos.x = WolfOBJ_data[i].pos[0];
 		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
 		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
-		//color
-		wolfModel[i].rgba = { 0.0f, 0.0f, 0.0f, 0.0f };
 		//uvw
 		wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
 		wolfModel[i].uvw.y = WolfOBJ_data[i].uvw[1];
@@ -216,7 +218,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	const float PI = 3.1415927;
 
-	static const SIMPLE_VERTEX cubeVerts[] =
+	/*static const SIMPLE_VERTEX cubeVerts[] =
 	{
 	{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
 	{ XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
@@ -226,7 +228,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	{ XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
 	{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
 	{ XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-	};
+	};*/
 	
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -259,9 +261,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
 
@@ -328,6 +329,11 @@ bool DEMO_APP::Run()
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
+	VPMToShader.rotMatrix = matrixRotateX;
+	VPMToShader.lightVector = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f);
+	VPMToShader.lightClr = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+	VPMToShader.ambientClr = XMFLOAT4(0.8, 0.8f, 0.8f, 1.0f);
+
 
 	context->OMSetRenderTargets(1, &targetView, NULL);
 	context->RSSetViewports(1, &viewport);
