@@ -72,6 +72,8 @@ class DEMO_APP
 	
 	ID3D11Buffer *constBuffer;
 	ID3D11Buffer *constBuffer2;
+	ID3D11DepthStencilView *zBuffer;
+	ID3D11Texture2D *depthBuffer;
 	XTime timer;
 
 	XMMATRIX matrixTranslate;
@@ -317,6 +319,26 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	VPMToShader.viewMatrix = XMMatrixLookAtLH(eye, at, up);
 	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 	//toShader.matFinal = toShader.worldMatrix * toShader.viewMatrix * toShader.projMatrix;
+
+	D3D11_TEXTURE2D_DESC texDesc;
+	ZeroMemory(&texDesc, sizeof(texDesc));
+
+	texDesc.Width = SCREEN_WIDTH;
+	texDesc.Height = SCREEN_HEIGHT;
+	texDesc.ArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.SampleDesc.Count = 4;
+	texDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+	device->CreateTexture2D(&texDesc, NULL, &depthBuffer);
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+	ZeroMemory(&dsvDesc, sizeof(dsvDesc));
+	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+
+	device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
 }
 
 //************************************************************
@@ -330,16 +352,17 @@ bool DEMO_APP::Run()
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
 	VPMToShader.rotMatrix = matrixRotateX;
-	VPMToShader.lightVector = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.0f);
+	VPMToShader.lightVector = XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f);
 	VPMToShader.lightClr = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-	VPMToShader.ambientClr = XMFLOAT4(0.8, 0.8f, 0.8f, 1.0f);
+	VPMToShader.ambientClr = XMFLOAT4(0.2, 0.2f, 0.2f, 1.0f);
 
 
-	context->OMSetRenderTargets(1, &targetView, NULL);
+	context->OMSetRenderTargets(1, &targetView, zBuffer);
 	context->RSSetViewports(1, &viewport);
 	
 	float clearColor[4] = { 0.26f,0.53f,0.96f,0.0f };
 	context->ClearRenderTargetView(targetView, clearColor);
+	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 	
 	UINT stride = sizeof(SIMPLE_VERTEX);
 	UINT offset = 0;
@@ -400,6 +423,8 @@ bool DEMO_APP::ShutDown()
 	indexBuffer->Release();
 	pixShader->Release();
 	vertShader->Release();
+	depthBuffer->Release();
+	zBuffer->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
 	return true;
 }
