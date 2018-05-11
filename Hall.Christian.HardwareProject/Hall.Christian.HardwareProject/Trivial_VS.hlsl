@@ -3,12 +3,16 @@ struct VS_IN
 {
 	float3 posL : POSITION;
 	float4 rgba : COLOR;
+	float2 uv : TEXTCOORD;
+	float3 norm : NORMAL;
 };
 
 struct VS_OUT
 {
 	float4 posH : SV_POSITION;
 	float4 clr : COLOR;
+	float2 uv : TEXTCOORD;
+	float3 norm : NORMAL;
 };
 
 cbuffer OBJECT_DATA : register( b0 )
@@ -20,9 +24,6 @@ cbuffer OBJECT_DATA : register( b0 )
 
 cbuffer SCENE : register( b1 )
 {
-	/*float4 constantColor;
-	float2 constantOffset;
-	float2 padding;*/
 	float4x4 viewMatrix;
 	float4x4 projMatrix;
 };
@@ -38,6 +39,8 @@ VS_OUT main( VS_IN input )
 
 	sendToRasterizer.posH = localH;
 	sendToRasterizer.clr = input.rgba;
+	sendToRasterizer.uv = input.uv;
+	sendToRasterizer.norm = input.norm;
 
 	return sendToRasterizer;
 }

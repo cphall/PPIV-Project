@@ -37,6 +37,7 @@ using namespace DirectX;
 #define CAMERAEYEX 0
 #define CAMERAEYEY 0
 #define CAMERAEYEZ -5
+#define LAYOUTSIZE 4
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -118,6 +119,8 @@ public:
 	{
 		XMFLOAT3 pos;
 		XMFLOAT4 rgba;
+		XMFLOAT2 uv;
+		XMFLOAT3 norm;
 	};
 	bool reverseX = false;
 	bool reverseY = false;
@@ -193,15 +196,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	viewport.TopLeftY = 0;
 
 	const float PI = 3.1415927;
-	
-	//OUR TRIANGLE
-	SIMPLE_VERTEX triArr[3];
-	triArr[0].pos = { 0.0f, 0.5f, 0.0f };
-	triArr[0].rgba = { 1.0f, 0.0f, 0.0f,1.0f };
-	triArr[1].pos = { 0.5f, -0.5f, 0.0f };
-	triArr[1].rgba = { 0.0f, 1.0f, 0.0f,1.0f };
-	triArr[2].pos = { -0.5f, -0.5f, 0.0f };
-	triArr[2].rgba = { 0.0f, 0.0f, 1.0f,1.0f };
 
 	static const SIMPLE_VERTEX cubeVerts[] =
 	{
@@ -245,12 +239,14 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
-	D3D11_INPUT_ELEMENT_DESC vLayout[2] =
+	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{"TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
-	device->CreateInputLayout(vLayout, 2, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
+	device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
 
 	D3D11_BUFFER_DESC cbufferDesc;
 	ZeroMemory(&cbufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -319,7 +315,7 @@ bool DEMO_APP::Run()
 	context->OMSetRenderTargets(1, &targetView, NULL);
 	context->RSSetViewports(1, &viewport);
 	
-	float clearColor[4] = { 0,0,0.7f,0 };
+	float clearColor[4] = { 0.26f,0.53f,0.96f,0.0f };
 	context->ClearRenderTargetView(targetView, clearColor);
 	
 	UINT stride = sizeof(SIMPLE_VERTEX);
@@ -378,6 +374,7 @@ bool DEMO_APP::ShutDown()
 	vertBuffer->Release();
 	constBuffer->Release();
 	constBuffer2->Release();
+	indexBuffer->Release();
 	pixShader->Release();
 	vertShader->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
