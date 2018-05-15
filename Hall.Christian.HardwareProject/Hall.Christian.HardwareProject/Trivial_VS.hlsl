@@ -15,6 +15,8 @@ struct VS_OUT
 	//float2 uv : TEXTCOORD;
 };
 
+texture2D basetexture : register(t0);
+
 cbuffer OBJECT_DATA : register( b0 )
 {
 	float4x4 worldMatrix;
