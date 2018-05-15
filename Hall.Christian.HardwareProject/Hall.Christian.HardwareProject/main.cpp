@@ -19,7 +19,7 @@
 #include "Trivial_PS.csh"
 #include "Trivial_VS.csh"
 #include "WolfOBJ.h"
-//#include "DDS"
+#include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
 #include <DirectXMath.h>
@@ -73,9 +73,15 @@ class DEMO_APP
 	
 	ID3D11Buffer *constBuffer;
 	ID3D11Buffer *constBuffer2;
+
+	//textures
 	ID3D11DepthStencilView *zBuffer;
 	ID3D11Texture2D *depthBuffer;
+	ID3D11Texture2D *wolfTexture;
+	ID3D11ShaderResourceView *wolfTextureView;
+
 	XTime timer;
+	HRESULT result;
 
 	XMMATRIX matrixTranslate;
 	XMMATRIX matrixRotateX;
@@ -128,7 +134,7 @@ public:
 	{
 		XMFLOAT3 pos;
 		XMFLOAT3 norm;
-		//XMFLOAT3 uvw;
+		XMFLOAT2 uvw;
 	};
 	SIMPLE_VERTEX wolfModel[1981];
 	bool reverseX = false;
@@ -175,9 +181,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
 		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
 		//uvw
-		/*wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
+		wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
 		wolfModel[i].uvw.y = WolfOBJ_data[i].uvw[1];
-		wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];*/
+		//wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
 		//norms
 		wolfModel[i].norm.x = WolfOBJ_data[i].nrm[0];
 		wolfModel[i].norm.y = WolfOBJ_data[i].nrm[1];
@@ -206,7 +212,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	flag = D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	HRESULT hr;
-	hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, NULL, NULL, NULL, D3D11_SDK_VERSION, &swapDesc, &swapChain, &device, NULL, &context);
+	hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flag, NULL, NULL, D3D11_SDK_VERSION, &swapDesc, &swapChain, &device, NULL, &context);
 
 	swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&BackBuffer);
 	device->CreateRenderTargetView(BackBuffer, NULL, &targetView);
@@ -221,17 +227,17 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	const float PI = 3.1415927;
 
-	/*static const SIMPLE_VERTEX cubeVerts[] =
+	static const SIMPLE_VERTEX floorVerts[] =
 	{
-	{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-	{ XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-	{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-	{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-	{ XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-	};*/
+	{ XMFLOAT3(-0.5f, -0.5f, -0.5f) },
+	{ XMFLOAT3(-0.5f, -0.5f,  0.5f) },
+	{ XMFLOAT3(-0.5f,  0.5f, -0.5f) },
+	{ XMFLOAT3(-0.5f,  0.5f,  0.5f) },
+	{ XMFLOAT3(0.5f, -0.5f, -0.5f)},
+	{ XMFLOAT3(0.5f, -0.5f,  0.5f)},
+	{ XMFLOAT3(0.5f,  0.5f, -0.5f)},
+	{ XMFLOAT3(0.5f,  0.5f,  0.5f)},
+	};
 	
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -263,11 +269,11 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
 	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		//{"TEXTCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
-	device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
+	hr = device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
 
 	D3D11_BUFFER_DESC cbufferDesc;
 	ZeroMemory(&cbufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -339,7 +345,12 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 
-	device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
+	result = device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
+
+	//DDS Loader
+	result = CreateDDSTextureFromFile(device, L"alphaBlackB.dds", nullptr, &wolfTextureView);
+
+	timer.Restart();
 }
 
 //************************************************************
@@ -349,6 +360,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 bool DEMO_APP::Run()
 {
 	timer.Signal();
+
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
@@ -400,6 +412,9 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
+	ID3D11ShaderResourceView* texViews[] = { wolfTextureView };
+	context->PSSetShaderResources(0, 1, texViews);
+
 	context->DrawIndexed(6114,0, 0);
 	
 	swapChain->Present(0, 0);

@@ -3,19 +3,17 @@ struct VS_IN
 {
 	float3 posL : POSITION;
 	float3 norm : NORMAL;
-	//float4 color : COLOR;
-	//float2 uv : TEXTCOORD;
+	float2 uv : TEXTCOORD;
 };
 
 struct VS_OUT
 {
 	float4 posH : SV_POSITION;
 	float4 color : COLOR;
-	//float4 norm : NORMAL;
-	//float2 uv : TEXTCOORD;
+	float4 norm : NORMAL;
+	float2 uv : TEXTCOORD;
 };
 
-texture2D basetexture : register(t0);
 
 cbuffer OBJECT_DATA : register( b0 )
 {
@@ -45,8 +43,8 @@ VS_OUT main( VS_IN input )
 
 	sendToRasterizer.posH = localH;
 	sendToRasterizer.color = ambientClr;
-	//sendToRasterizer.uv = input.uv;
-	float4 norm = normalize(mul(rotMatrix, input.norm));
+	sendToRasterizer.uv = input.uv;
+	float4 norm = normalize(mul(input.norm, worldMatrix));
 	float diffuse = saturate(dot(norm, lightVector));
 	sendToRasterizer.color += lightClr * diffuse;
 

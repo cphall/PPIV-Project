@@ -161,10 +161,12 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="XTime.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="WolfOBJ.h" />
     <ClInclude Include="XTime.h" />
   </ItemGroup>
