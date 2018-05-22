@@ -319,6 +319,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//toShader.constantOffset = { 0.0f, 0.0f };
 	WMToShader.constantColor = { 1.0f, 1.0f, 0.0f, 0.0f };
 	WMToShader.worldMatrix = XMMatrixIdentity();
+
 	//XMStoreFloat4x4(&VPMToShader.viewMatrix, XMMatrixIdentity());
 	/*toShader.matScale = XMMatrixIdentity();
 	toShader.matRotateX = XMMatrixIdentity();
@@ -330,7 +331,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	matrixTranslate = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
 	cameraWM = XMMatrixIdentity();
-	VPMToShader.viewMatrix = XMMatrixLookAtLH(eye, at, up);
+	//VPMToShader.viewMatrix = XMMatrixLookAtLH(eye, at, up);
 	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 	//toShader.matFinal = toShader.worldMatrix * toShader.viewMatrix * toShader.projMatrix;
 
@@ -367,7 +368,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 bool DEMO_APP::Run()
 {
 	timer.Signal();
-
+	//do whatever we need to do with the view matrix 
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
@@ -380,7 +381,7 @@ bool DEMO_APP::Run()
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, CAMERASPEED * timer.SmoothDelta());
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix,result);
 	}
 
@@ -388,7 +389,7 @@ bool DEMO_APP::Run()
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, -CAMERASPEED * timer.SmoothDelta());
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix, result);
 	}
 
@@ -396,7 +397,7 @@ bool DEMO_APP::Run()
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
 		XMMATRIX translate = XMMatrixTranslation(-CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
 	}
 
@@ -404,23 +405,23 @@ bool DEMO_APP::Run()
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
 		XMMATRIX translate = XMMatrixTranslation(CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
 	}
 
 	if (GetAsyncKeyState(0x58) & 0x8000)//x
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
-		XMMATRIX translate = XMMatrixTranslation(0.0f, CAMERASPEED * timer.SmoothDelta(), 0.0f);
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		XMMATRIX translate = XMMatrixTranslation(0.0f, -CAMERASPEED * timer.SmoothDelta(), 0.0f);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
 	}
 
 	if (GetAsyncKeyState(VK_SPACE) & 0x8000)//space
 	{
 		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
-		XMMATRIX translate = XMMatrixTranslation(0.0f, -CAMERASPEED * timer.SmoothDelta(), 0.0f);
-		VPMToShader.viewMatrix = XMMatrixMultiply(translate, VPMToShader.viewMatrix);
+		XMMATRIX translate = XMMatrixTranslation(0.0f, CAMERASPEED * timer.SmoothDelta(), 0.0f);
+		cameraWM = XMMatrixMultiply(translate, cameraWM);
 		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
 	}
 
@@ -479,6 +480,8 @@ bool DEMO_APP::Run()
 
 	}
 
+	//now inverse the view matrix and store in the VPMToShader.viewMatrix
+	VPMToShader.viewMatrix = XMMatrixInverse(&XMMatrixDeterminant(cameraWM), cameraWM);
 	//XMStoreFloat4x4(&VPMToShader.viewMatrix, XMMatrixInverse(,VPMToShader.viewMatrix))
 	context->OMSetRenderTargets(1, &targetView, zBuffer);
 	context->RSSetViewports(1, &viewport);
