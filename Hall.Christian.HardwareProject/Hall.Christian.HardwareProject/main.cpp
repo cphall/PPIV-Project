@@ -41,7 +41,7 @@ using namespace DirectX;
 #define CAMERAEYEZ 3
 #define LAYOUTSIZE 3
 #define FOV 45.0f
-#define CAMERASPEED 5.0f
+#define CAMERASPEED 20.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
 
@@ -87,7 +87,7 @@ class DEMO_APP
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
 	FXMVECTOR at = { 0.0f, 0.0f, 0.0f };
 	FXMVECTOR up = { 0.0f, 1.0f, 0.0f };
-	XMMATRIX cameraWM;
+	XMFLOAT4X4 cameraWM;
 
 	XTime timer;
 	HRESULT result;
@@ -330,7 +330,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	toShader.matScale = XMMatrixScaling(1.5f, 1.5f, 1.5f);*/
 	matrixTranslate = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
-	cameraWM = XMMatrixIdentity();
+	XMMATRIX id = XMMatrixIdentity();
+	XMStoreFloat4x4(&cameraWM, id);
+
 	//VPMToShader.viewMatrix = XMMatrixLookAtLH(eye, at, up);
 	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 	//toShader.matFinal = toShader.worldMatrix * toShader.viewMatrix * toShader.projMatrix;
@@ -370,7 +372,7 @@ bool DEMO_APP::Run()
 	timer.Signal();
 	//do whatever we need to do with the view matrix 
 	matrixRotateX = XMMatrixIdentity();
-	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
+	//matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
 	VPMToShader.rotMatrix = matrixRotateX;
 	VPMToShader.lightVector = XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f);
@@ -379,89 +381,95 @@ bool DEMO_APP::Run()
 
 	if (GetAsyncKeyState(0x57) & 0x8000)//w
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, CAMERASPEED * timer.SmoothDelta());
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix,result);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM,result);
 	}
 
 	if (GetAsyncKeyState(0x53) & 0x8000)//s
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, -CAMERASPEED * timer.SmoothDelta());
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix, result);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM, result);
 	}
 
 	if (GetAsyncKeyState(0x41) & 0x8000)//a
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(-CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM, result);
 	}
 
 	if (GetAsyncKeyState(0x44) & 0x8000)//d
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM, result);
 	}
 
 	if (GetAsyncKeyState(0x58) & 0x8000)//x
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, -CAMERASPEED * timer.SmoothDelta(), 0.0f);
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM, result);
 	}
 
 	if (GetAsyncKeyState(VK_SPACE) & 0x8000)//space
 	{
-		//XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, CAMERASPEED * timer.SmoothDelta(), 0.0f);
-		cameraWM = XMMatrixMultiply(translate, cameraWM);
-		//XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+		//cameraWM = XMMatrixMultiply(translate, cameraWM);
+		XMStoreFloat4x4(&cameraWM, result);
 	}
 
 	if (GetAsyncKeyState(0x45) & 0x8000) //e
 	{
 		//rotate clockwise
-		/*XMFLOAT4 pos = XMFLOAT4(VPMToShader.viewMatrix._41, VPMToShader.viewMatrix._42, VPMToShader.viewMatrix._43, VPMToShader.viewMatrix._44);
-		VPMToShader.viewMatrix._41 = 0;
-		VPMToShader.viewMatrix._42 = 0;
-		VPMToShader.viewMatrix._43 = 0;
+		XMFLOAT4 pos = XMFLOAT4(cameraWM._41,cameraWM._42, cameraWM._43, cameraWM._44);
+		cameraWM._41 = 0;
+		cameraWM._42 = 0;
+		cameraWM._43 = 0;
 
 		XMMATRIX rotate = XMMatrixRotationY(XMConvertToRadians(timer.SmoothDelta() * CAMERASPEED));
-		XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		tempCam = XMMatrixMultiply(rotate, tempCam);
 
-		XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMStoreFloat4x4(&cameraWM, tempCam);
 
-		VPMToShader.viewMatrix._41 = pos.x;
-		VPMToShader.viewMatrix._42 = pos.y;
-		VPMToShader.viewMatrix._43 = pos.z;*/
+		cameraWM._41 = pos.x;
+		cameraWM._42 = pos.y;
+		cameraWM._43 = pos.z;
 
 	}
 
 	if (GetAsyncKeyState(0x51) & 0x8000) //q
 	{
 		//rotate counterclockwise
-		/*XMFLOAT4 pos = XMFLOAT4(VPMToShader.viewMatrix._41, VPMToShader.viewMatrix._42, VPMToShader.viewMatrix._43, VPMToShader.viewMatrix._44);
-		VPMToShader.viewMatrix._41 = 0;
-		VPMToShader.viewMatrix._42 = 0;
-		VPMToShader.viewMatrix._43 = 0;
+		XMFLOAT4 pos = XMFLOAT4(cameraWM._41, cameraWM._42, cameraWM._43, cameraWM._44);
+		cameraWM._41 = 0;
+		cameraWM._42 = 0;
+		cameraWM._43 = 0;
 
 		XMMATRIX rotate = XMMatrixRotationY(-XMConvertToRadians(timer.SmoothDelta() * CAMERASPEED));
-		XMMATRIX tempCam = XMLoadFloat4x4(&VPMToShader.viewMatrix);
+		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		tempCam = XMMatrixMultiply(rotate, tempCam);
 
-		XMStoreFloat4x4(&VPMToShader.viewMatrix, tempCam);
+		XMStoreFloat4x4(&cameraWM, tempCam);
 
-		VPMToShader.viewMatrix._41 = pos.x;
-		VPMToShader.viewMatrix._42 = pos.y;
-		VPMToShader.viewMatrix._43 = pos.z;*/
+		cameraWM._41 = pos.x;
+		cameraWM._42 = pos.y;
+		cameraWM._43 = pos.z;
 	}
 
 	if (GetAsyncKeyState(VK_ADD) & 0x8000) //+ sign
@@ -480,8 +488,10 @@ bool DEMO_APP::Run()
 
 	}
 
+	XMMATRIX camera = XMLoadFloat4x4(&cameraWM);
+
 	//now inverse the view matrix and store in the VPMToShader.viewMatrix
-	VPMToShader.viewMatrix = XMMatrixInverse(&XMMatrixDeterminant(cameraWM), cameraWM);
+	VPMToShader.viewMatrix = XMMatrixInverse(&XMMatrixDeterminant(camera), camera);
 	//XMStoreFloat4x4(&VPMToShader.viewMatrix, XMMatrixInverse(,VPMToShader.viewMatrix))
 	context->OMSetRenderTargets(1, &targetView, zBuffer);
 	context->RSSetViewports(1, &viewport);
