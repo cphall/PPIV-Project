@@ -41,7 +41,7 @@ using namespace DirectX;
 #define CAMERAEYEZ 3
 #define LAYOUTSIZE 3
 #define FOV 45.0f
-#define CAMERASPEED 20.0f
+#define CAMERASPEED 5.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
 
@@ -265,6 +265,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
 	
 	D3D11_BUFFER_DESC ibufferDesc;
+	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
 	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	ibufferDesc.ByteWidth = sizeof(unsigned int) * 6114;
 	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -472,20 +473,24 @@ bool DEMO_APP::Run()
 		cameraWM._43 = pos.z;
 	}
 
-	if (GetAsyncKeyState(VK_ADD) & 0x8000) //+ sign
+	if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000)
 	{
 		//zoom in (FOV goes down)
-		if (!fovAngleY >= ZOOMMAX)
+		if (fovAngleY < ZOOMMAX)
 		{
-			fovAngleY += 1.0f;
+			fovAngleY += 0.25f;
 			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
-	if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000) //- sign
+	if (GetAsyncKeyState(VK_ADD) & 0x8000)
 	{
 		//zoom out
-
+		if (fovAngleY > ZOOMMIN)
+		{
+			fovAngleY -= 0.25f;
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+		}
 	}
 
 	XMMATRIX camera = XMLoadFloat4x4(&cameraWM);
@@ -504,6 +509,7 @@ bool DEMO_APP::Run()
 	UINT offset = 0;
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ZeroMemory(&mappedResource, sizeof(mappedResource));
 	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
 	memcpy(mappedResource.pData, WolfOBJ_indicies, sizeof(WolfOBJ_indicies));
 	context->Unmap(indexBuffer, NULL);
@@ -564,6 +570,15 @@ bool DEMO_APP::ShutDown()
 	vertShader->Release();
 	depthBuffer->Release();
 	zBuffer->Release();
+	inputLayout->Release();
+
+	if (inputLayoutTriangle != nullptr)
+		inputLayoutTriangle->Release();
+	if (triangleVertBuffer != nullptr)
+		triangleVertBuffer->Release();
+
+	wolfTexture->Release();
+	wolfTextureView->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
 	return true;
 }
