@@ -18,7 +18,6 @@ struct VS_OUT
 cbuffer OBJECT_DATA : register( b0 )
 {
 	float4x4 worldMatrix;
-	//float4 rgba;
 };
 
 

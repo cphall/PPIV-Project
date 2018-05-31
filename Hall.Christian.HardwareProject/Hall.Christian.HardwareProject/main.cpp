@@ -276,6 +276,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
+
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
 	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
 	{
@@ -373,7 +374,7 @@ bool DEMO_APP::Run()
 	timer.Signal();
 	//do whatever we need to do with the view matrix 
 	matrixRotateX = XMMatrixIdentity();
-	//matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
+	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
 	VPMToShader.rotMatrix = matrixRotateX;
 	VPMToShader.lightVector = XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f);
@@ -385,7 +386,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, CAMERASPEED * timer.SmoothDelta());
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM,result);
 	}
 
@@ -394,7 +394,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, -CAMERASPEED * timer.SmoothDelta());
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
@@ -403,7 +402,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(-CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
@@ -412,7 +410,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
@@ -421,7 +418,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, -CAMERASPEED * timer.SmoothDelta(), 0.0f);
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
@@ -430,7 +426,6 @@ bool DEMO_APP::Run()
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, CAMERASPEED * timer.SmoothDelta(), 0.0f);
 		XMMATRIX result = XMMatrixMultiply(translate, tempCam);
-		//cameraWM = XMMatrixMultiply(translate, cameraWM);
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
