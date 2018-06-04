@@ -143,7 +143,7 @@ public:
 	{
 		XMFLOAT3 pos;
 		XMFLOAT3 norm;
-		XMFLOAT2 uvw;
+		XMFLOAT2 uv;
 	};
 	SIMPLE_VERTEX wolfModel[1981];
 	bool reverseX = false;
@@ -190,8 +190,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
 		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
 		//uvw
-		wolfModel[i].uvw.x = WolfOBJ_data[i].uvw[0];
-		wolfModel[i].uvw.y = WolfOBJ_data[i].uvw[1];
+		wolfModel[i].uv.x = WolfOBJ_data[i].uvw[0];
+		wolfModel[i].uv.y = WolfOBJ_data[i].uvw[1];
 		//wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
 		//norms
 		wolfModel[i].norm.x = WolfOBJ_data[i].nrm[0];
