@@ -22,6 +22,7 @@
 #include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
+#include <vector>
 #include <DirectXMath.h>
 #include <d3d11.h>
 #pragma comment(lib,"d3d11.lib")
@@ -62,28 +63,41 @@ class DEMO_APP
 	ID3D11RenderTargetView *targetView;
 	ID3D11DeviceContext *context;
 	D3D11_VIEWPORT viewport;
-	ID3D11Texture2D* BackBuffer;
 	
+	//buffers
+	ID3D11Texture2D *BackBuffer;
 	ID3D11Buffer *vertBuffer;
 	ID3D11Buffer *indexBuffer;
+	ID3D11Buffer *constBuffer;
+	ID3D11Buffer *constBuffer2;
+	ID3D11Buffer *triangleVertBuffer;
+	ID3D11Buffer *cubeIndexBuffer;
+	ID3D11Buffer *cubeVertBuffer;
+
+	//input layouts
 	ID3D11InputLayout *inputLayout;
 	unsigned int numVerts = NUMVERTS;
-	
-	ID3D11Buffer *triangleVertBuffer;
 	ID3D11InputLayout *inputLayoutTriangle;
 	unsigned int numTriangleVerts = NUMTVERTS;
 	
+	//shader vars
 	ID3D11VertexShader *vertShader;
 	ID3D11PixelShader *pixShader;
+	ID3D11VertexShader *SKYMAP_VS;
+	ID3D11PixelShader *SKYMAP_PS;
+	ID3D10Blob *SKYMAP_VS_Buffer;
+	ID3D10Blob *SKYMAP_PS_Buffer;
 	
-	ID3D11Buffer *constBuffer;
-	ID3D11Buffer *constBuffer2;
-
 	//textures
 	ID3D11DepthStencilView *zBuffer;
+	ID3D11DepthStencilState *DSLessEqual;
+	ID3D11RasterizerState *RSCullNone;
 	ID3D11Texture2D *depthBuffer;
 	ID3D11Texture2D *alienPlanetTexture;
+
+	//SRV's
 	ID3D11ShaderResourceView *alienPlanetTextureView;
+	ID3D11ShaderResourceView *skymapRV;
 
 	//camera
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
@@ -91,32 +105,15 @@ class DEMO_APP
 	FXMVECTOR up = { 0.0f, 1.0f, 0.0f };
 	XMFLOAT4X4 cameraWM;
 
+	//timer & debug
 	XTime timer;
 	HRESULT result;
 
+	//Object matricies
 	XMMATRIX matrixTranslate;
 	XMMATRIX matrixRotateX;
-
-	float fovAngleY = FOV;
-	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
-	float NearZ = 0.1f;
-	float FarZ = 100.0f;
-	unsigned int indexCount;
-	unsigned int cubeIndices[36] =
-	{
-		0,1,2,
-		1,3,2,
-		4,6,5,
-		5,6,7,
-		0,5,1,
-		0,4,5,
-		2,7,6,
-		2,3,7,
-		0,6,4,
-		0,2,6,
-		1,7,3,
-		1,5,7,
-	};
+	XMMATRIX cubeWorld; //skymap world matrix
+	//structs
 
 	struct WM_TO_VRAM
 	{
@@ -133,8 +130,76 @@ class DEMO_APP
 		XMFLOAT4 ambientClr;
 	};
 
+	//vars
 	WM_TO_VRAM WMToShader;
 	VPM_TO_VRAM VPMToShader;
+	float fovAngleY = FOV;
+	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	float NearZ = 0.1f;
+	float FarZ = 100.0f;
+	unsigned int indexCount;
+	unsigned int cubeIndices[36] =
+	{
+		//front
+		0,1,2,
+		0,2,3,
+		//back
+		4,5,6,
+		4,6,7,
+		//top
+		8,9,10,
+		8,10,11,
+		//bottom
+		12,13,14,
+		12,14,15,
+		//left
+		16,17,18,
+		16,18,19,
+		//right
+		20,21,22,
+		20,22,23
+	};
+
+	XMFLOAT3 cubeVerts[24] =
+	{ 
+		//front
+		XMFLOAT3(-1.0f, -1.0f, -1.0f),
+		XMFLOAT3(-1.0f,  1.0f, -1.0f),
+		XMFLOAT3(1.0f,  1.0f, -1.0f),
+		XMFLOAT3(1.0f, -1.0f, -1.0f),
+
+		//back          
+		XMFLOAT3(-1.0f, -1.0f, 1.0f),
+		XMFLOAT3(1.0f, -1.0f, 1.0f),
+		XMFLOAT3(1.0f,  1.0f, 1.0f),
+		XMFLOAT3(-1.0f,  1.0f, 1.0f),
+
+		//top               
+		XMFLOAT3(-1.0f, 1.0f, -1.0f),
+		XMFLOAT3(-1.0f, 1.0f,  1.0f),
+		XMFLOAT3(1.0f, 1.0f,  1.0f),
+		XMFLOAT3(1.0f, 1.0f, -1.0f),
+
+		//bottom           
+		XMFLOAT3(-1.0f, -1.0f, -1.0f),
+		XMFLOAT3(1.0f, -1.0f, -1.0f),
+		XMFLOAT3(1.0f, -1.0f,  1.0f),
+		XMFLOAT3(-1.0f, -1.0f,  1.0f),
+
+		//left            
+		XMFLOAT3(-1.0f, -1.0f,  1.0f),
+		XMFLOAT3(-1.0f,  1.0f,  1.0f),
+		XMFLOAT3(-1.0f,  1.0f, -1.0f),
+		XMFLOAT3(-1.0f, -1.0f, -1.0f),
+
+		//right          
+		XMFLOAT3(1.0f, -1.0f, -1.0f),
+		XMFLOAT3(1.0f,  1.0f, -1.0f),
+		XMFLOAT3(1.0f,  1.0f,  1.0f),
+		XMFLOAT3(1.0f, -1.0f,  1.0f),
+	};
+
+
 	
 public:
 	
@@ -234,18 +299,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	viewport.TopLeftY = 0;
 
 	const float PI = 3.1415927;
-
-	static const SIMPLE_VERTEX floorVerts[] =
-	{
-	{ XMFLOAT3(-0.5f, -0.5f, -0.5f) },
-	{ XMFLOAT3(-0.5f, -0.5f,  0.5f) },
-	{ XMFLOAT3(-0.5f,  0.5f, -0.5f) },
-	{ XMFLOAT3(-0.5f,  0.5f,  0.5f) },
-	{ XMFLOAT3(0.5f, -0.5f, -0.5f)},
-	{ XMFLOAT3(0.5f, -0.5f,  0.5f)},
-	{ XMFLOAT3(0.5f,  0.5f, -0.5f)},
-	{ XMFLOAT3(0.5f,  0.5f,  0.5f)},
-	};
 	
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -257,7 +310,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
     
 	D3D11_SUBRESOURCE_DATA InitData;
 	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	InitData.pSysMem = /*cubeVerts*/ alienPlanetModel;
+	InitData.pSysMem = alienPlanetModel;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 	
@@ -272,6 +325,23 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	ibufferDesc.MiscFlags = 0;
 
 	device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+
+	//describing out skymap cube
+	D3D11_BUFFER_DESC indexBufferDesc;
+	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.ByteWidth = sizeof(cubeVerts);
+	indexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE?
+	indexBufferDesc.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA bufferData;
+	bufferData.pSysMem = &cubeVerts;
+	device->CreateBuffer(&indexBufferDesc, &bufferData, &cubeVertBuffer);
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.ByteWidth = sizeof(cubeIndices);
+	bufferData.pSysMem = &cubeIndices;
+	device->CreateBuffer(&indexBufferDesc, &bufferData, &cubeIndexBuffer);
 
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
@@ -555,16 +625,29 @@ bool DEMO_APP::ShutDown()
 	swapChain->Release();
 	targetView->Release();
 	context->Release();
+
 	BackBuffer->Release();
 	vertBuffer->Release();
 	constBuffer->Release();
 	constBuffer2->Release();
 	indexBuffer->Release();
-	pixShader->Release();
-	vertShader->Release();
 	depthBuffer->Release();
 	zBuffer->Release();
+	cubeIndexBuffer->Release();
+	cubeVertBuffer->Release();
+
+	SKYMAP_PS->Release();
+	SKYMAP_VS->Release();
+	SKYMAP_PS_Buffer->Release();
+	SKYMAP_VS_Buffer->Release();
+	pixShader->Release();
+	vertShader->Release();
+
+	skymapRV->Release();
 	inputLayout->Release();
+
+	DSLessEqual->Release();
+	RSCullNone->Release();
 
 	if (inputLayoutTriangle != nullptr)
 		inputLayoutTriangle->Release();
