@@ -29,10 +29,10 @@
     <ClInclude Include="XTime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WolfOBJ.h">
+    <ClInclude Include="DDSTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DDSTextureLoader.h">
+    <ClInclude Include="MAlienPlanet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

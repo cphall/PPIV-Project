@@ -18,7 +18,7 @@
 #include "XTime.h"
 #include "Trivial_PS.csh"
 #include "Trivial_VS.csh"
-#include "WolfOBJ.h"
+#include "MAlienPlanet.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
@@ -44,6 +44,8 @@ using namespace DirectX;
 #define CAMERASPEED 5.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
+#define APARRAYSIZE 1841
+#define APINDEXSIZE 7800
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -80,8 +82,8 @@ class DEMO_APP
 	//textures
 	ID3D11DepthStencilView *zBuffer;
 	ID3D11Texture2D *depthBuffer;
-	ID3D11Texture2D *wolfTexture;
-	ID3D11ShaderResourceView *wolfTextureView;
+	ID3D11Texture2D *alienPlanetTexture;
+	ID3D11ShaderResourceView *alienPlanetTextureView;
 
 	//camera
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
@@ -118,9 +120,6 @@ class DEMO_APP
 
 	struct WM_TO_VRAM
 	{
-		/*XMFLOAT4 constantColor;
-		XMFLOAT2 constantOffset;
-		XMFLOAT2 padding;*/
 		XMMATRIX worldMatrix;
 		XMFLOAT4 constantColor;
 	};
@@ -145,7 +144,7 @@ public:
 		XMFLOAT3 norm;
 		XMFLOAT2 uv;
 	};
-	SIMPLE_VERTEX wolfModel[1981];
+	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
 	bool reverseX = false;
 	bool reverseY = false;
 	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
@@ -184,19 +183,19 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	ShowWindow(window, SW_SHOW);
 	//********************* END WARNING ************************//
-	for (unsigned int i = 0; i < 1981; i++)
+	for (unsigned int i = 0; i < APARRAYSIZE; i++)
 	{
-		wolfModel[i].pos.x = WolfOBJ_data[i].pos[0];
-		wolfModel[i].pos.y = WolfOBJ_data[i].pos[1];
-		wolfModel[i].pos.z = WolfOBJ_data[i].pos[2];
+		alienPlanetModel[i].pos.x = MAlienPlanet_data[i].pos[0];
+		alienPlanetModel[i].pos.y = MAlienPlanet_data[i].pos[1];
+		alienPlanetModel[i].pos.z = MAlienPlanet_data[i].pos[2];
 		//uvw
-		wolfModel[i].uv.x = WolfOBJ_data[i].uvw[0];
-		wolfModel[i].uv.y = WolfOBJ_data[i].uvw[1];
+		alienPlanetModel[i].uv.x = MAlienPlanet_data[i].uvw[0];
+		alienPlanetModel[i].uv.y = MAlienPlanet_data[i].uvw[1];
 		//wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
 		//norms
-		wolfModel[i].norm.x = WolfOBJ_data[i].nrm[0];
-		wolfModel[i].norm.y = WolfOBJ_data[i].nrm[1];
-		wolfModel[i].norm.z = WolfOBJ_data[i].nrm[2];
+		alienPlanetModel[i].norm.x = MAlienPlanet_data[i].nrm[0];
+		alienPlanetModel[i].norm.y = MAlienPlanet_data[i].nrm[1];
+		alienPlanetModel[i].norm.z = MAlienPlanet_data[i].nrm[2];
 	}
 
 
@@ -253,12 +252,12 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 1981;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * APARRAYSIZE;
 	bufferDesc.MiscFlags = 0;
     
 	D3D11_SUBRESOURCE_DATA InitData;
 	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	InitData.pSysMem = /*cubeVerts*/ wolfModel;
+	InitData.pSysMem = /*cubeVerts*/ alienPlanetModel;
 	InitData.SysMemPitch = 0;
 	InitData.SysMemSlicePitch = 0;
 	
@@ -267,7 +266,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	D3D11_BUFFER_DESC ibufferDesc;
 	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
 	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	ibufferDesc.ByteWidth = sizeof(unsigned int) * 6114;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * APINDEXSIZE;
 	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	ibufferDesc.MiscFlags = 0;
@@ -360,7 +359,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	result = device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
 
 	//DDS Loader
-	result = CreateDDSTextureFromFile(device, L"alphaBlackB.dds", nullptr, &wolfTextureView);
+	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
 
 	timer.Restart();
 }
@@ -506,7 +505,7 @@ bool DEMO_APP::Run()
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(mappedResource));
 	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
-	memcpy(mappedResource.pData, WolfOBJ_indicies, sizeof(WolfOBJ_indicies));
+	memcpy(mappedResource.pData, MAlienPlanet_indicies, sizeof(MAlienPlanet_indicies));
 	context->Unmap(indexBuffer, NULL);
 	
 	D3D11_MAPPED_SUBRESOURCE subResource;
@@ -536,10 +535,10 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	ID3D11ShaderResourceView* texViews[] = { wolfTextureView };
+	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView };
 	context->PSSetShaderResources(0, 1, texViews);
 
-	context->DrawIndexed(6114,0, 0);
+	context->DrawIndexed(APINDEXSIZE,0, 0);
 	
 	swapChain->Present(0, 0);
 	return true; 
@@ -572,8 +571,8 @@ bool DEMO_APP::ShutDown()
 	if (triangleVertBuffer != nullptr)
 		triangleVertBuffer->Release();
 
-	wolfTexture->Release();
-	wolfTextureView->Release();
+	alienPlanetTexture->Release();
+	alienPlanetTextureView->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
 	return true;
 }

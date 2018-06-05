@@ -15,7 +15,7 @@ typedef struct _OBJ_VERT_
 #endif
 // Raw Vertex Data follows: Positions, Texture Coordinates and Normals.
 #ifndef _WolfOBJ_data_
-const OBJ_VERT WolfOBJ_data[1981] =
+const OBJ_VERT MAlienPlanet_data[1981] =
 {
 	{	{ 0.023367f, 1.464363f, -0.031987f },	{ 0.916162f, 0.353210f, 0.000000f },	{ 0.000000f, 0.000000f, -1.000000f }	},
 	{	{ 0.011683f, 1.370896f, -0.031987f },	{ 0.905421f, 0.439137f, 0.000000f },	{ 0.000000f, 0.000000f, -1.000000f }	},
