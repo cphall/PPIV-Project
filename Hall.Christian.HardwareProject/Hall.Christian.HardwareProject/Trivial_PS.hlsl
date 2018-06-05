@@ -1,6 +1,6 @@
 
 texture2D baseTexture : register(t0);
-SamplerState filters[2] : register(s0);
+SamplerState filters[1] : register(s0);
 
 struct PS_IN
 {

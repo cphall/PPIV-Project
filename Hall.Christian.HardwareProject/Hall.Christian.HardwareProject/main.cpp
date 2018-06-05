@@ -26,6 +26,8 @@
 #include <DirectXMath.h>
 #include <d3d11.h>
 #pragma comment(lib,"d3d11.lib")
+//#include "D3DX11asyc.h"
+
 using namespace std;
 
 
@@ -42,9 +44,14 @@ using namespace DirectX;
 #define CAMERAEYEZ 3
 #define LAYOUTSIZE 3
 #define FOV 45.0f
-#define CAMERASPEED 5.0f
+#define CAMERASPEED 25.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
+#define NEARMIN 0.1f
+#define NEARMAX 100.0f
+#define FARMIN 1001.0f
+#define FARMAX 2000.0f
+#define NEARFARMOD 0.05f
 #define APARRAYSIZE 1841
 #define APINDEXSIZE 7800
 
@@ -94,6 +101,8 @@ class DEMO_APP
 	ID3D11RasterizerState *RSCullNone;
 	ID3D11Texture2D *depthBuffer;
 	ID3D11Texture2D *alienPlanetTexture;
+	ID3D11Texture2D *environmentTexture;
+	ID3D11ShaderResourceView *environmentView;
 
 	//SRV's
 	ID3D11ShaderResourceView *alienPlanetTextureView;
@@ -112,13 +121,15 @@ class DEMO_APP
 	//Object matricies
 	XMMATRIX matrixTranslate;
 	XMMATRIX matrixRotateX;
-	XMMATRIX cubeWorld; //skymap world matrix
+	XMMATRIX matrixScaling;
+	XMFLOAT4X4 cubeWorld; //skymap world matrix
+	XMMATRIX planetWorld = XMMatrixIdentity();
+	XMMATRIX worldMat = XMMatrixIdentity();
 	//structs
 
 	struct WM_TO_VRAM
 	{
 		XMMATRIX worldMatrix;
-		XMFLOAT4 constantColor;
 	};
 	struct VPM_TO_VRAM
 	{
@@ -132,11 +143,12 @@ class DEMO_APP
 
 	//vars
 	WM_TO_VRAM WMToShader;
+	WM_TO_VRAM cubeWMToShader;
 	VPM_TO_VRAM VPMToShader;
 	float fovAngleY = FOV;
 	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
-	float NearZ = 0.1f;
-	float FarZ = 100.0f;
+	float NearZ = NEARMIN;
+	float FarZ = FARMAX;
 	unsigned int indexCount;
 	unsigned int cubeIndices[36] =
 	{
@@ -160,47 +172,7 @@ class DEMO_APP
 		20,22,23
 	};
 
-	XMFLOAT3 cubeVerts[24] =
-	{ 
-		//front
-		XMFLOAT3(-1.0f, -1.0f, -1.0f),
-		XMFLOAT3(-1.0f,  1.0f, -1.0f),
-		XMFLOAT3(1.0f,  1.0f, -1.0f),
-		XMFLOAT3(1.0f, -1.0f, -1.0f),
 
-		//back          
-		XMFLOAT3(-1.0f, -1.0f, 1.0f),
-		XMFLOAT3(1.0f, -1.0f, 1.0f),
-		XMFLOAT3(1.0f,  1.0f, 1.0f),
-		XMFLOAT3(-1.0f,  1.0f, 1.0f),
-
-		//top               
-		XMFLOAT3(-1.0f, 1.0f, -1.0f),
-		XMFLOAT3(-1.0f, 1.0f,  1.0f),
-		XMFLOAT3(1.0f, 1.0f,  1.0f),
-		XMFLOAT3(1.0f, 1.0f, -1.0f),
-
-		//bottom           
-		XMFLOAT3(-1.0f, -1.0f, -1.0f),
-		XMFLOAT3(1.0f, -1.0f, -1.0f),
-		XMFLOAT3(1.0f, -1.0f,  1.0f),
-		XMFLOAT3(-1.0f, -1.0f,  1.0f),
-
-		//left            
-		XMFLOAT3(-1.0f, -1.0f,  1.0f),
-		XMFLOAT3(-1.0f,  1.0f,  1.0f),
-		XMFLOAT3(-1.0f,  1.0f, -1.0f),
-		XMFLOAT3(-1.0f, -1.0f, -1.0f),
-
-		//right          
-		XMFLOAT3(1.0f, -1.0f, -1.0f),
-		XMFLOAT3(1.0f,  1.0f, -1.0f),
-		XMFLOAT3(1.0f,  1.0f,  1.0f),
-		XMFLOAT3(1.0f, -1.0f,  1.0f),
-	};
-
-
-	
 public:
 	
 	struct SIMPLE_VERTEX
@@ -215,6 +187,45 @@ public:
 	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
 	bool Run();
 	bool ShutDown();
+
+	SIMPLE_VERTEX cubeVerts[24] =
+	{ 
+		//front
+		{{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		{{-1.0f,  1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+		{{1.0f,  1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+		{{1.0f, -1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+
+		//back          
+		{{-1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+		{ { 1.0f, -1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f,  1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f,  1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+
+		//top 
+		{ { -1.0f, 1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f,  1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, 1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, 1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+
+		//bottom
+		{ { -1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+
+		//left 
+		{ { -1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f,  1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f,  1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+
+		//right
+		{ { 1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f,  1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f,  1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } }
+	};
 };
 
 //************************************************************
@@ -300,6 +311,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	const float PI = 3.1415927;
 	
+	//planet
 	D3D11_BUFFER_DESC bufferDesc;
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -316,6 +328,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	
 	hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
 	
+
 	D3D11_BUFFER_DESC ibufferDesc;
 	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
 	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -326,25 +339,36 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
 
-	//describing out skymap cube
-	D3D11_BUFFER_DESC indexBufferDesc;
-	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
-	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(cubeVerts);
-	indexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	indexBufferDesc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE?
-	indexBufferDesc.MiscFlags = 0;
+	//cube
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 24;
+	bufferDesc.MiscFlags = 0;
 
 	D3D11_SUBRESOURCE_DATA bufferData;
-	bufferData.pSysMem = &cubeVerts;
-	device->CreateBuffer(&indexBufferDesc, &bufferData, &cubeVertBuffer);
-	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	indexBufferDesc.ByteWidth = sizeof(cubeIndices);
-	bufferData.pSysMem = &cubeIndices;
-	device->CreateBuffer(&indexBufferDesc, &bufferData, &cubeIndexBuffer);
+	ZeroMemory(&bufferData, sizeof(D3D11_SUBRESOURCE_DATA));
+	bufferData.pSysMem = cubeVerts;
+	bufferData.SysMemPitch = 0;
+	bufferData.SysMemSlicePitch = 0;
 
+	device->CreateBuffer(&bufferDesc, &bufferData, &cubeVertBuffer);
+
+	D3D11_BUFFER_DESC indexBufferDesc;
+	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
+	indexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	indexBufferDesc.ByteWidth = sizeof(unsigned int) * 36;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	indexBufferDesc.MiscFlags = 0;
+
+	device->CreateBuffer(&indexBufferDesc, NULL, &cubeIndexBuffer);
+
+	//shaders
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
+	
 
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
 	D3D11_INPUT_ELEMENT_DESC vLayout[LAYOUTSIZE] =
@@ -387,26 +411,14 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	hr = device->CreateBuffer(&cbufferDesc2, &cbInitData2, &constBuffer2);
 
-	//toShader.constantOffset = { 0.0f, 0.0f };
-	WMToShader.constantColor = { 1.0f, 1.0f, 0.0f, 0.0f };
 	WMToShader.worldMatrix = XMMatrixIdentity();
-
-	//XMStoreFloat4x4(&VPMToShader.viewMatrix, XMMatrixIdentity());
-	/*toShader.matScale = XMMatrixIdentity();
-	toShader.matRotateX = XMMatrixIdentity();
-	toShader.matRotateY = XMMatrixIdentity();
-	toShader.matRotateZ = XMMatrixIdentity();
-	toShader.matTranslate = XMMatrixIdentity();
-	toShader.matRotateX = XMMatrixRotationX(XMConvertToRadians(90.0f));
-	toShader.matScale = XMMatrixScaling(1.5f, 1.5f, 1.5f);*/
 	matrixTranslate = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
 	XMMATRIX id = XMMatrixIdentity();
 	XMStoreFloat4x4(&cameraWM, id);
+	XMStoreFloat4x4(&cubeWorld, id);
 
-	//VPMToShader.viewMatrix = XMMatrixLookAtLH(eye, at, up);
 	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
-	//toShader.matFinal = toShader.worldMatrix * toShader.viewMatrix * toShader.projMatrix;
 
 	D3D11_TEXTURE2D_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(texDesc));
@@ -430,6 +442,10 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	//DDS Loader
 	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
+	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
+
+	device->CreateVertexShader(SKYMAP_VS_Buffer->GetBufferPointer(), SKYMAP_VS_Buffer->GetBufferSize(), NULL, &SKYMAP_VS);
+	device->CreatePixelShader(SKYMAP_PS_Buffer->GetBufferPointer(), SKYMAP_PS_Buffer->GetBufferSize(), NULL, &SKYMAP_PS);
 
 	timer.Restart();
 }
@@ -441,16 +457,18 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 bool DEMO_APP::Run()
 {
 	timer.Signal();
-	//do whatever we need to do with the view matrix 
+
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
-	WMToShader.worldMatrix = matrixTranslate * matrixRotateX;
+
+	planetWorld = matrixTranslate * matrixRotateX;
+	WMToShader.worldMatrix = planetWorld;
 	VPMToShader.rotMatrix = matrixRotateX;
 	VPMToShader.lightVector = XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f);
 	VPMToShader.lightClr = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	VPMToShader.ambientClr = XMFLOAT4(0.2, 0.2f, 0.2f, 1.0f);
 
-	if (GetAsyncKeyState(0x57) & 0x8000)//w
+	if (GetAsyncKeyState('W') & 0x8000)//w
 	{
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, CAMERASPEED * timer.SmoothDelta());
@@ -458,7 +476,7 @@ bool DEMO_APP::Run()
 		XMStoreFloat4x4(&cameraWM,result);
 	}
 
-	if (GetAsyncKeyState(0x53) & 0x8000)//s
+	if (GetAsyncKeyState('S') & 0x8000)//s
 	{
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, 0.0f, -CAMERASPEED * timer.SmoothDelta());
@@ -466,7 +484,7 @@ bool DEMO_APP::Run()
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
-	if (GetAsyncKeyState(0x41) & 0x8000)//a
+	if (GetAsyncKeyState('A') & 0x8000)//a
 	{
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(-CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
@@ -474,7 +492,7 @@ bool DEMO_APP::Run()
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
-	if (GetAsyncKeyState(0x44) & 0x8000)//d
+	if (GetAsyncKeyState('D') & 0x8000)//d
 	{
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(CAMERASPEED * timer.SmoothDelta(), 0.0f, 0.0f);
@@ -482,7 +500,7 @@ bool DEMO_APP::Run()
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
-	if (GetAsyncKeyState(0x58) & 0x8000)//x
+	if (GetAsyncKeyState('X') & 0x8000)//x
 	{
 		XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
 		XMMATRIX translate = XMMatrixTranslation(0.0f, -CAMERASPEED * timer.SmoothDelta(), 0.0f);
@@ -498,7 +516,7 @@ bool DEMO_APP::Run()
 		XMStoreFloat4x4(&cameraWM, result);
 	}
 
-	if (GetAsyncKeyState(0x45) & 0x8000) //e
+	if (GetAsyncKeyState('E') & 0x8000) //e
 	{
 		//rotate clockwise
 		XMFLOAT4 pos = XMFLOAT4(cameraWM._41,cameraWM._42, cameraWM._43, cameraWM._44);
@@ -518,7 +536,7 @@ bool DEMO_APP::Run()
 
 	}
 
-	if (GetAsyncKeyState(0x51) & 0x8000) //q
+	if (GetAsyncKeyState('Q') & 0x8000) //q
 	{
 		//rotate counterclockwise
 		XMFLOAT4 pos = XMFLOAT4(cameraWM._41, cameraWM._42, cameraWM._43, cameraWM._44);
@@ -537,27 +555,68 @@ bool DEMO_APP::Run()
 		cameraWM._43 = pos.z;
 	}
 
-	if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000)
+	if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000) //zoom in (FOV goes down)
 	{
-		//zoom in (FOV goes down)
+		
 		if (fovAngleY < ZOOMMAX)
 		{
-			fovAngleY += 0.25f;
+			fovAngleY += 0.05f;
 			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
-	if (GetAsyncKeyState(VK_ADD) & 0x8000)
+	if (GetAsyncKeyState(VK_ADD) & 0x8000) //zoom out
 	{
-		//zoom out
+		
 		if (fovAngleY > ZOOMMIN)
 		{
-			fovAngleY -= 0.25f;
+			fovAngleY -= 0.05f;
 			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
+	if (GetAsyncKeyState('U') & 0x8000) //near -
+	{
+		if (NearZ - NEARFARMOD >= NEARMIN)
+		{
+			NearZ -= NEARFARMOD;
+		}
+	}
+
+	if (GetAsyncKeyState('I') & 0x8000) //near +
+	{
+		if (NearZ + NEARFARMOD <= NEARMAX)
+		{
+			NearZ += NEARFARMOD;
+		}
+	}
+
+	if (GetAsyncKeyState('J') & 0x8000) //far -
+	{
+		if (FarZ - NEARFARMOD >= FARMIN)
+		{
+			FarZ -= NEARFARMOD;
+		}
+	}
+
+	if (GetAsyncKeyState('K') & 0x8000) //far +
+	{
+		if (FarZ + NEARFARMOD <= FARMAX)
+		{
+			FarZ += NEARFARMOD;
+		}
+	}
+
+	XMFLOAT4 cameraPos = { cameraWM._41, cameraWM._42, cameraWM._43, cameraWM._44 };
+	cubeWorld._41 = cameraPos.x;
+	cubeWorld._42 = cameraPos.y;
+	cubeWorld._43 = cameraPos.z;
+	cubeWorld._44 = cameraPos.w;
+	XMMATRIX cube = XMLoadFloat4x4(&cubeWorld);
 	XMMATRIX camera = XMLoadFloat4x4(&cameraWM);
+
+	//store the 4th row of the camera now and save an identity matrix to it
+	//set the cube WM to this new matrix
 
 	//now inverse the view matrix and store in the VPMToShader.viewMatrix
 	VPMToShader.viewMatrix = XMMatrixInverse(&XMMatrixDeterminant(camera), camera);
@@ -578,6 +637,7 @@ bool DEMO_APP::Run()
 	memcpy(mappedResource.pData, MAlienPlanet_indicies, sizeof(MAlienPlanet_indicies));
 	context->Unmap(indexBuffer, NULL);
 	
+
 	D3D11_MAPPED_SUBRESOURCE subResource;
 	ZeroMemory(&subResource, sizeof(subResource));
 	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
@@ -592,8 +652,6 @@ bool DEMO_APP::Run()
 	memcpy(subResource2.pData, &VPMToShader, sizeof(VPM_TO_VRAM));
 	context->Unmap(constBuffer2, NULL);
 
-	context->VSSetConstantBuffers(0, 1, &constBuffer);
-	context->VSSetConstantBuffers(1, 1, &constBuffer2);
 	
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
 	context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
@@ -605,11 +663,43 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView };
-	context->PSSetShaderResources(0, 1, texViews);
+	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView, environmentView };
+	context->PSSetShaderResources(0, 2, texViews);
 
 	context->DrawIndexed(APINDEXSIZE,0, 0);
-	
+
+	//cube WM math
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	matrixScaling = XMMatrixScaling(1000.0f, 1000.0f, 1000.0f);
+	cube =  matrixScaling;
+	WMToShader.worldMatrix = cube;
+
+	//update cuberesource
+	D3D11_MAPPED_SUBRESOURCE cubeResource;
+	ZeroMemory(&cubeResource, sizeof(cubeResource));
+	context->Map(cubeIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &cubeResource);
+	memcpy(cubeResource.pData, cubeIndices, sizeof(cubeIndices));
+	context->Unmap(cubeIndexBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+	context->VSSetConstantBuffers(1, 1, &constBuffer2);
+	context->IASetVertexBuffers(0, 1, &cubeVertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(cubeIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	context->VSSetShader(SKYMAP_VS, NULL, 0);
+	context->PSSetShader(SKYMAP_PS, NULL, 0);
+
+	//cube topology
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	//update constant buffer for cube
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->DrawIndexed(36, 0, 0);
+	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
 	swapChain->Present(0, 0);
 	return true; 
 }
@@ -646,8 +736,8 @@ bool DEMO_APP::ShutDown()
 	skymapRV->Release();
 	inputLayout->Release();
 
-	DSLessEqual->Release();
-	RSCullNone->Release();
+	/*DSLessEqual->Release();
+	RSCullNone->Release();*/
 
 	if (inputLayoutTriangle != nullptr)
 		inputLayoutTriangle->Release();
