@@ -18,6 +18,8 @@
 #include "XTime.h"
 #include "Trivial_PS.csh"
 #include "Trivial_VS.csh"
+#include "SKYMAP_VS.csh"
+#include "SKYMAP_PS.csh"
 #include "MAlienPlanet.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
@@ -29,10 +31,7 @@
 //#include "D3DX11asyc.h"
 
 using namespace std;
-
-
 using namespace DirectX;
-
 
 #define SCREEN_WIDTH	800
 #define SCREEN_HEIGHT	600
@@ -50,8 +49,8 @@ using namespace DirectX;
 #define NEARMIN 0.1f
 #define NEARMAX 100.0f
 #define FARMIN 1001.0f
-#define FARMAX 2000.0f
-#define NEARFARMOD 0.05f
+#define FARMAX 1500.0f
+#define NEARFARMOD 0.025f
 #define APARRAYSIZE 1841
 #define APINDEXSIZE 7800
 
@@ -83,6 +82,7 @@ class DEMO_APP
 
 	//input layouts
 	ID3D11InputLayout *inputLayout;
+	ID3D11InputLayout *inputLayout2;
 	unsigned int numVerts = NUMVERTS;
 	ID3D11InputLayout *inputLayoutTriangle;
 	unsigned int numTriangleVerts = NUMTVERTS;
@@ -90,10 +90,10 @@ class DEMO_APP
 	//shader vars
 	ID3D11VertexShader *vertShader;
 	ID3D11PixelShader *pixShader;
-	ID3D11VertexShader *SKYMAP_VS;
-	ID3D11PixelShader *SKYMAP_PS;
-	ID3D10Blob *SKYMAP_VS_Buffer;
-	ID3D10Blob *SKYMAP_PS_Buffer;
+	ID3D11VertexShader *cubeMap_VS;
+	ID3D11PixelShader *cubeMap_PS;
+	/*ID3D10Blob *SKYMAP_VS_Buffer;
+	ID3D10Blob *SKYMAP_PS_Buffer;*/
 	
 	//textures
 	ID3D11DepthStencilView *zBuffer;
@@ -368,6 +368,8 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//shaders
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
+	device->CreateVertexShader(SKYMAP_VS, sizeof(SKYMAP_VS), NULL, &cubeMap_VS);
+	device->CreatePixelShader(SKYMAP_PS, sizeof(SKYMAP_PS), NULL, &cubeMap_PS);
 	
 
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
@@ -378,6 +380,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		{ "TEXTCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	hr = device->CreateInputLayout(vLayout, LAYOUTSIZE, Trivial_VS, sizeof(Trivial_VS), &inputLayout);
+	hr = device->CreateInputLayout(vLayout, LAYOUTSIZE, SKYMAP_VS, sizeof(SKYMAP_VS), &inputLayout2);
 
 	D3D11_BUFFER_DESC cbufferDesc;
 	ZeroMemory(&cbufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -443,9 +446,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//DDS Loader
 	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
-
-	device->CreateVertexShader(SKYMAP_VS_Buffer->GetBufferPointer(), SKYMAP_VS_Buffer->GetBufferSize(), NULL, &SKYMAP_VS);
-	device->CreatePixelShader(SKYMAP_PS_Buffer->GetBufferPointer(), SKYMAP_PS_Buffer->GetBufferSize(), NULL, &SKYMAP_PS);
 
 	timer.Restart();
 }
@@ -580,6 +580,7 @@ bool DEMO_APP::Run()
 		if (NearZ - NEARFARMOD >= NEARMIN)
 		{
 			NearZ -= NEARFARMOD;
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
@@ -588,6 +589,7 @@ bool DEMO_APP::Run()
 		if (NearZ + NEARFARMOD <= NEARMAX)
 		{
 			NearZ += NEARFARMOD;
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
@@ -596,6 +598,7 @@ bool DEMO_APP::Run()
 		if (FarZ - NEARFARMOD >= FARMIN)
 		{
 			FarZ -= NEARFARMOD;
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
@@ -604,6 +607,7 @@ bool DEMO_APP::Run()
 		if (FarZ + NEARFARMOD <= FARMAX)
 		{
 			FarZ += NEARFARMOD;
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
 		}
 	}
 
@@ -686,11 +690,15 @@ bool DEMO_APP::Run()
 	context->IASetVertexBuffers(0, 1, &cubeVertBuffer, &stride, &offset);
 	context->IASetIndexBuffer(cubeIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	context->VSSetShader(SKYMAP_VS, NULL, 0);
-	context->PSSetShader(SKYMAP_PS, NULL, 0);
+	context->VSSetShader(cubeMap_VS, NULL, 0);
+	context->PSSetShader(cubeMap_PS, NULL, 0);
+	context->IASetInputLayout(inputLayout2);
 
 	//cube topology
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+/*
+	ID3D11ShaderResourceView* texViews2[] = { environmentView };
+	context->PSSetShaderResources(0, 1, texViews2)*/;
 
 	//update constant buffer for cube
 	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
@@ -726,10 +734,10 @@ bool DEMO_APP::ShutDown()
 	cubeIndexBuffer->Release();
 	cubeVertBuffer->Release();
 
-	SKYMAP_PS->Release();
-	SKYMAP_VS->Release();
-	SKYMAP_PS_Buffer->Release();
-	SKYMAP_VS_Buffer->Release();
+	cubeMap_VS->Release();
+	cubeMap_PS->Release();
+	/*SKYMAP_PS_Buffer->Release();
+	SKYMAP_VS_Buffer->Release();*/
 	pixShader->Release();
 	vertShader->Release();
 
