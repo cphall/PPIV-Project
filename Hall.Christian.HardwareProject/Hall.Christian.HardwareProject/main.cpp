@@ -98,6 +98,8 @@ class DEMO_APP
 	//textures
 	ID3D11DepthStencilView *zBuffer;
 	ID3D11DepthStencilState *DSLessEqual;
+	ID3D11RasterizerState *ccwCullMode;
+	ID3D11RasterizerState *cwCullMode;
 	ID3D11RasterizerState *RSCullNone;
 	ID3D11Texture2D *depthBuffer;
 	ID3D11Texture2D *alienPlanetTexture;
@@ -197,10 +199,10 @@ public:
 		{{1.0f, -1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
 
 		//back          
-		{{-1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
-		{ { 1.0f, -1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{{1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
 		{ { 1.0f,  1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 		{ { -1.0f,  1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f, -1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 
 		//top 
 		{ { -1.0f, 1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
@@ -209,9 +211,9 @@ public:
 		{ { 1.0f, 1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 
 		//bottom
-		{ { -1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { -1.0f, -1.0f,  -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 		{ { 1.0f, -1.0f, -1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
-		{ { 1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
+		{ { 1.0f, -1.0f, 1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 		{ { -1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 
 		//left 
@@ -443,9 +445,33 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	result = device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
 
+	D3D11_RASTERIZER_DESC rasDSC;
+	ZeroMemory(&rasDSC, sizeof(D3D11_RASTERIZER_DESC));
+	rasDSC.FillMode = D3D11_FILL_SOLID;
+	rasDSC.CullMode = D3D11_CULL_BACK;
+	rasDSC.FrontCounterClockwise = true;
+	device->CreateRasterizerState(&rasDSC, &ccwCullMode);
+
+	rasDSC.FrontCounterClockwise = false;
+
+	device->CreateRasterizerState(&rasDSC, &cwCullMode);
+
+	rasDSC.CullMode = D3D11_CULL_NONE;
+	device->CreateRasterizerState(&rasDSC, &RSCullNone);
+
+	D3D11_DEPTH_STENCIL_DESC dsDesc;
+	ZeroMemory(&dsDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+	dsDesc.DepthEnable = true;
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+	device->CreateDepthStencilState(&dsDesc, &DSLessEqual);
+
 	//DDS Loader
 	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
+
+	
 
 	timer.Restart();
 }
@@ -690,12 +716,9 @@ bool DEMO_APP::Run()
 	context->IASetVertexBuffers(0, 1, &cubeVertBuffer, &stride, &offset);
 	context->IASetIndexBuffer(cubeIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	context->VSSetShader(cubeMap_VS, NULL, 0);
-	context->PSSetShader(cubeMap_PS, NULL, 0);
 	context->IASetInputLayout(inputLayout2);
-
 	//cube topology
-	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 /*
 	ID3D11ShaderResourceView* texViews2[] = { environmentView };
 	context->PSSetShaderResources(0, 1, texViews2)*/;
@@ -705,7 +728,12 @@ bool DEMO_APP::Run()
 	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
 	context->Unmap(constBuffer, NULL);
 
+	context->VSSetShader(cubeMap_VS, NULL, 0);
+	context->PSSetShader(cubeMap_PS, NULL, 0);
+	context->OMSetDepthStencilState(DSLessEqual, 0);
+	context->RSSetState(RSCullNone);
 	context->DrawIndexed(36, 0, 0);
+	context->OMSetDepthStencilState(NULL, 0);
 	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 	swapChain->Present(0, 0);
