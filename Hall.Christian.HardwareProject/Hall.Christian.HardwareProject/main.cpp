@@ -108,7 +108,7 @@ class DEMO_APP
 
 	//SRV's
 	ID3D11ShaderResourceView *alienPlanetTextureView;
-	ID3D11ShaderResourceView *skymapRV;
+	//ID3D11ShaderResourceView *skymapRV;
 
 	//camera
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
@@ -764,23 +764,17 @@ bool DEMO_APP::ShutDown()
 
 	cubeMap_VS->Release();
 	cubeMap_PS->Release();
-	/*SKYMAP_PS_Buffer->Release();
-	SKYMAP_VS_Buffer->Release();*/
 	pixShader->Release();
 	vertShader->Release();
 
-	skymapRV->Release();
+	//skymapRV->Release();
 	inputLayout->Release();
+	inputLayout2->Release();
 
-	/*DSLessEqual->Release();
-	RSCullNone->Release();*/
+	DSLessEqual->Release();
+	RSCullNone->Release();
 
-	if (inputLayoutTriangle != nullptr)
-		inputLayoutTriangle->Release();
-	if (triangleVertBuffer != nullptr)
-		triangleVertBuffer->Release();
-
-	alienPlanetTexture->Release();
+	/*alienPlanetTexture->Release();*/
 	alienPlanetTextureView->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
 	return true;
