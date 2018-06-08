@@ -92,8 +92,6 @@ class DEMO_APP
 	ID3D11PixelShader *pixShader;
 	ID3D11VertexShader *cubeMap_VS;
 	ID3D11PixelShader *cubeMap_PS;
-	/*ID3D10Blob *SKYMAP_VS_Buffer;
-	ID3D10Blob *SKYMAP_PS_Buffer;*/
 	
 	//textures
 	ID3D11DepthStencilView *zBuffer;
@@ -148,7 +146,10 @@ class DEMO_APP
 	WM_TO_VRAM cubeWMToShader;
 	VPM_TO_VRAM VPMToShader;
 	float fovAngleY = FOV;
-	float AspectRatio = SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	long width = SCREEN_WIDTH;
+	long height = SCREEN_HEIGHT;
+	long AspectRatio = width / height;
+	RECT window_size;
 	float NearZ = NEARMIN;
 	float FarZ = FARMAX;
 	unsigned int indexCount;
@@ -252,7 +253,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//wndClass.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FSICON));
 	RegisterClassEx(&wndClass);
 
-	RECT window_size = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	window_size = { 0, 0, width, height };
 	AdjustWindowRect(&window_size, WS_OVERLAPPEDWINDOW, false);
 
 	window = CreateWindow(L"DirectXApplication", L"CGS Hardware Project", WS_OVERLAPPEDWINDOW & ~(WS_THICKFRAME | WS_MAXIMIZEBOX),
@@ -483,6 +484,12 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 bool DEMO_APP::Run()
 {
 	timer.Signal();
+
+	/*GetWindowRect(window, &window_size);
+	width = window_size.right - window_size.left;
+	height = window_size.bottom - window_size.top;
+	AspectRatio = width / height;
+	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);*/
 
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
