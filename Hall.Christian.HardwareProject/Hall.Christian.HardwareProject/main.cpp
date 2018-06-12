@@ -83,8 +83,8 @@ class DEMO_APP
 	//input layouts
 	ID3D11InputLayout *inputLayout;
 	ID3D11InputLayout *inputLayout2;
-	unsigned int numVerts = NUMVERTS;
 	ID3D11InputLayout *inputLayoutTriangle;
+	unsigned int numVerts = NUMVERTS;
 	unsigned int numTriangleVerts = NUMTVERTS;
 	
 	//shader vars
@@ -249,7 +249,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	wndClass.lpszClassName = L"DirectXApplication";
 	wndClass.hInstance = application;
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wndClass.hbrBackground = (HBRUSH)(COLOR_WINDOWFRAME);
+	//wndClass.hbrBackground = (HBRUSH)(COLOR_WINDOWFRAME);
 	//wndClass.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FSICON));
 	RegisterClassEx(&wndClass);
 
@@ -257,7 +257,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	AdjustWindowRect(&window_size, WS_OVERLAPPEDWINDOW, false);
 
 	window = CreateWindow(L"DirectXApplication", L"CGS Hardware Project", WS_OVERLAPPEDWINDOW & ~(WS_THICKFRAME | WS_MAXIMIZEBOX),
-		CW_USEDEFAULT, CW_USEDEFAULT, window_size.right - window_size.left, window_size.bottom - window_size.top,
+		CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH, SCREEN_HEIGHT,
 		NULL, NULL, application, this);
 
 	ShowWindow(window, SW_SHOW);
@@ -471,8 +471,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//DDS Loader
 	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
-
-	
 
 	timer.Restart();
 }
@@ -754,6 +752,9 @@ bool DEMO_APP::Run()
 bool DEMO_APP::ShutDown()
 {
 	// TODO: PART 1 STEP 6
+
+	swapChain->SetFullscreenState(FALSE, NULL);
+
 	device->Release();
 	swapChain->Release();
 	targetView->Release();
