@@ -33,8 +33,8 @@
 using namespace std;
 using namespace DirectX;
 
-#define SCREEN_WIDTH	800
-#define SCREEN_HEIGHT	600
+#define SCREEN_WIDTH	1600.0f
+#define SCREEN_HEIGHT	900.0f
 #define _DEBUG 0
 #define NUMVERTS 369
 #define NUMTVERTS 2400
@@ -42,7 +42,7 @@ using namespace DirectX;
 #define CAMERAEYEY 1.5f
 #define CAMERAEYEZ 3
 #define LAYOUTSIZE 3
-#define FOV 45.0f
+#define FOV 90.0f
 #define CAMERASPEED 25.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
@@ -53,6 +53,7 @@ using namespace DirectX;
 #define NEARFARMOD 0.025f
 #define APARRAYSIZE 1841
 #define APINDEXSIZE 7800
+#define ASPECTRATIO SCREEN_WIDTH/SCREEN_HEIGHT
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -146,9 +147,9 @@ class DEMO_APP
 	WM_TO_VRAM cubeWMToShader;
 	VPM_TO_VRAM VPMToShader;
 	float fovAngleY = FOV;
-	long width = SCREEN_WIDTH;
-	long height = SCREEN_HEIGHT;
-	long AspectRatio = width / height;
+	float width = SCREEN_WIDTH;
+	float height = SCREEN_HEIGHT;
+	float aspectRatio = width / height;
 	RECT window_size;
 	float NearZ = NEARMIN;
 	float FarZ = FARMAX;
@@ -187,6 +188,7 @@ public:
 	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
 	bool reverseX = false;
 	bool reverseY = false;
+	bool fullscreen = false;
 	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
 	bool Run();
 	bool ShutDown();
@@ -253,7 +255,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	//wndClass.hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_FSICON));
 	RegisterClassEx(&wndClass);
 
-	window_size = { 0, 0, width, height };
+	window_size = { 0, 0, (long)SCREEN_WIDTH, (long)SCREEN_HEIGHT};
 	AdjustWindowRect(&window_size, WS_OVERLAPPEDWINDOW, false);
 
 	window = CreateWindow(L"DirectXApplication", L"CGS Hardware Project", WS_OVERLAPPEDWINDOW & ~(WS_THICKFRAME | WS_MAXIMIZEBOX),
@@ -286,7 +288,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	swapDesc.BufferCount = 1;
 	swapDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapDesc.Windowed = true;
-	swapDesc.SampleDesc.Count = 4; //no aa
+	swapDesc.SampleDesc.Count = 4; 
 	swapDesc.SampleDesc.Quality = 0;
 	swapDesc.OutputWindow = window;
 	swapDesc.BufferDesc.RefreshRate.Denominator = 1;
@@ -424,7 +426,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	XMStoreFloat4x4(&cameraWM, id);
 	XMStoreFloat4x4(&cubeWorld, id);
 
-	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 
 	D3D11_TEXTURE2D_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(texDesc));
@@ -483,15 +485,27 @@ bool DEMO_APP::Run()
 {
 	timer.Signal();
 
-	/*GetWindowRect(window, &window_size);
-	width = window_size.right - window_size.left;
-	height = window_size.bottom - window_size.top;
-	AspectRatio = width / height;
-	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);*/
+	//if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_RETURN) & 0x8000)
+	//{
+	//	if (!fullscreen) //windowed -> fullscreen
+	//	{
+	//		fullscreen = true;
+	//		swapChain->SetFullscreenState(true, NULL);
+	//		context->OMSetRenderTargets(0, 0, 0);
+	//		targetView->Release();
+
+	//	}
+	//	else //fullscreen -> windowed
+	//	{
+	//		fullscreen = false;
+	//		swapChain->SetFullscreenState(false, NULL);
+	//	}
+	//}
 
 	matrixRotateX = XMMatrixIdentity();
 	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
 
+	//planetWorld = XMMatrixScaling(0.5f, 1.0f, 1.0f);
 	planetWorld = matrixTranslate * matrixRotateX;
 	WMToShader.worldMatrix = planetWorld;
 	VPMToShader.rotMatrix = matrixRotateX;
@@ -592,7 +606,7 @@ bool DEMO_APP::Run()
 		if (fovAngleY < ZOOMMAX)
 		{
 			fovAngleY += 0.05f;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
@@ -602,7 +616,7 @@ bool DEMO_APP::Run()
 		if (fovAngleY > ZOOMMIN)
 		{
 			fovAngleY -= 0.05f;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
@@ -611,7 +625,7 @@ bool DEMO_APP::Run()
 		if (NearZ - NEARFARMOD >= NEARMIN)
 		{
 			NearZ -= NEARFARMOD;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
@@ -620,7 +634,7 @@ bool DEMO_APP::Run()
 		if (NearZ + NEARFARMOD <= NEARMAX)
 		{
 			NearZ += NEARFARMOD;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
@@ -629,7 +643,7 @@ bool DEMO_APP::Run()
 		if (FarZ - NEARFARMOD >= FARMIN)
 		{
 			FarZ -= NEARFARMOD;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
@@ -638,7 +652,7 @@ bool DEMO_APP::Run()
 		if (FarZ + NEARFARMOD <= FARMAX)
 		{
 			FarZ += NEARFARMOD;
-			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), AspectRatio, NearZ, FarZ);
+			VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
 		}
 	}
 
