@@ -20,6 +20,7 @@
 #include "Trivial_VS.csh"
 #include "SKYMAP_VS.csh"
 #include "SKYMAP_PS.csh"
+#include "PL_PS.csh"
 #include "MAlienPlanet.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
@@ -93,6 +94,8 @@ class DEMO_APP
 	ID3D11PixelShader *pixShader;
 	ID3D11VertexShader *cubeMap_VS;
 	ID3D11PixelShader *cubeMap_PS;
+	ID3D11Buffer* perFrameBuffer;
+	ID3D11PixelShader *pl_PS;
 	
 	//textures
 	ID3D11DepthStencilView *zBuffer;
@@ -114,6 +117,9 @@ class DEMO_APP
 	FXMVECTOR at = { 0.0f, 0.0f, 0.0f };
 	FXMVECTOR up = { 0.0f, 1.0f, 0.0f };
 	XMFLOAT4X4 cameraWM;
+
+	
+
 
 	//timer & debug
 	XTime timer;
@@ -185,6 +191,33 @@ public:
 		XMFLOAT3 norm;
 		XMFLOAT2 uv;
 	};
+
+	struct Light
+	{
+		Light()
+		{
+			ZeroMemory(this, sizeof(Light));
+		}
+		XMFLOAT3 direction;
+		float padding1;
+		XMFLOAT3 position;
+		float range;
+		XMFLOAT3 attenuation;
+		float padding2;
+		XMFLOAT4 ambient;
+		XMFLOAT4 diffuse;
+	};
+
+	struct perFrame
+	{
+		Light light;
+	};
+
+	perFrame constBufferPerFrame;
+
+	//lights
+	Light pointLight;
+
 	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
 	bool reverseX = false;
 	bool reverseY = false;
@@ -279,6 +312,11 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		alienPlanetModel[i].norm.z = MAlienPlanet_data[i].nrm[2];
 	}
 
+	pointLight.position = XMFLOAT3(0.0f,0.0f,0.0f);
+	pointLight.range = 200.0f;
+	pointLight.attenuation = XMFLOAT3(0.0f, 0.2f, 0.0f);
+	pointLight.ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	pointLight.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -370,11 +408,19 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&indexBufferDesc, NULL, &cubeIndexBuffer);
 
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(perFrame);
+	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+
 	//shaders
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
 	device->CreateVertexShader(SKYMAP_VS, sizeof(SKYMAP_VS), NULL, &cubeMap_VS);
 	device->CreatePixelShader(SKYMAP_PS, sizeof(SKYMAP_PS), NULL, &cubeMap_PS);
+	device->CreatePixelShader(PL_PS, sizeof(PL_PS), NULL, &pl_PS);
 	
 
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
@@ -424,6 +470,10 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	XMMATRIX id = XMMatrixIdentity();
 	XMStoreFloat4x4(&cameraWM, id);
+	XMMATRIX tempCam = XMLoadFloat4x4(&cameraWM);
+	XMMATRIX translate = XMMatrixTranslation(0.0f, 1.0f, -10.0f);
+	XMMATRIX result = XMMatrixMultiply(translate, tempCam);
+	XMStoreFloat4x4(&cameraWM, result);
 	XMStoreFloat4x4(&cubeWorld, id);
 
 	VPMToShader.projMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovAngleY), ASPECTRATIO, NearZ, FarZ);
@@ -446,7 +496,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
 
-	result = device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
+	device->CreateDepthStencilView(depthBuffer, &dsvDesc, &zBuffer);
 
 	D3D11_RASTERIZER_DESC rasDSC;
 	ZeroMemory(&rasDSC, sizeof(D3D11_RASTERIZER_DESC));
@@ -471,7 +521,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreateDepthStencilState(&dsDesc, &DSLessEqual);
 
 	//DDS Loader
-	result = CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
+	CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
 
 	timer.Restart();
@@ -512,6 +562,12 @@ bool DEMO_APP::Run()
 	VPMToShader.lightVector = XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f);
 	VPMToShader.lightClr = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	VPMToShader.ambientClr = XMFLOAT4(0.2, 0.2f, 0.2f, 1.0f);
+
+	XMVECTOR pointLightVec = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	pointLightVec = XMVector3TransformCoord(pointLightVec, planetWorld);
+	pointLight.position.x = XMVectorGetX(pointLightVec);
+	pointLight.position.y = XMVectorGetX(pointLightVec);
+	pointLight.position.z = XMVectorGetX(pointLightVec);
 
 	if (GetAsyncKeyState('W') & 0x8000)//w
 	{
@@ -680,6 +736,18 @@ bool DEMO_APP::Run()
 	UINT stride = sizeof(SIMPLE_VERTEX);
 	UINT offset = 0;
 
+	////point light mapping
+	//constBufferPerFrame.light = pointLight;
+	//context->UpdateSubresource(perFrameBuffer, 0, NULL, &constBufferPerFrame, 0, 0);
+	////D3D11_MAPPED_SUBRESOURCE mappedResource;
+	////ZeroMemory(&mappedResource, sizeof(mappedResource));
+	////context->Map(perFrameBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
+	////memcpy(mappedResource.pData, &constBufferPerFrame, sizeof(perFrame));
+	////context->Unmap(perFrameBuffer, NULL);
+	//context->PSSetConstantBuffers(0, 1, &perFrameBuffer);
+	//context->VSSetShader(vertShader, 0, 0);
+	//context->PSSetShader(pl_PS, 0, 0);
+
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(mappedResource));
 	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
@@ -783,6 +851,7 @@ bool DEMO_APP::ShutDown()
 	zBuffer->Release();
 	cubeIndexBuffer->Release();
 	cubeVertBuffer->Release();
+	perFrameBuffer->Release();
 
 	cubeMap_VS->Release();
 	cubeMap_PS->Release();

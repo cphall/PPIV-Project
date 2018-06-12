@@ -14,12 +14,10 @@ struct VS_OUT
 	float2 uv : TEXTCOORD;
 };
 
-
 cbuffer OBJECT_DATA : register( b0 )
 {
 	float4x4 worldMatrix;
 };
-
 
 cbuffer SCENE : register( b1 )
 {

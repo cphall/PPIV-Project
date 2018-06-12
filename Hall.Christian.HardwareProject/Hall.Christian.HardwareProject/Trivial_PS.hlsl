@@ -1,6 +1,6 @@
 
 texture2D baseTexture : register(t0);
-SamplerState filters[1] : register(s0);
+SamplerState filter : register(s0);
 
 struct PS_IN
 {
@@ -16,5 +16,5 @@ struct PS_OUT
 
 float4 main(PS_IN input) : SV_TARGET
 {
-	return baseTexture.Sample(filters[0], input.uv) *input.color;
+	return baseTexture.Sample(filter, input.uv) *input.color;
 }
