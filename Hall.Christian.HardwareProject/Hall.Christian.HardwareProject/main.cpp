@@ -20,8 +20,10 @@
 #include "Trivial_VS.csh"
 #include "SKYMAP_VS.csh"
 #include "SKYMAP_PS.csh"
-#include "PL_PS.csh"
 #include "MAlienPlanet.h"
+#include "aircraft.h"
+#include "MAlienP2.h"
+#include "Moon.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
@@ -95,7 +97,7 @@ class DEMO_APP
 	ID3D11VertexShader *cubeMap_VS;
 	ID3D11PixelShader *cubeMap_PS;
 	ID3D11Buffer* perFrameBuffer;
-	ID3D11PixelShader *pl_PS;
+	//ID3D11PixelShader *pl_PS;
 	
 	//textures
 	ID3D11DepthStencilView *zBuffer;
@@ -104,22 +106,24 @@ class DEMO_APP
 	ID3D11RasterizerState *cwCullMode;
 	ID3D11RasterizerState *RSCullNone;
 	ID3D11Texture2D *depthBuffer;
-	ID3D11Texture2D *alienPlanetTexture;
 	ID3D11Texture2D *environmentTexture;
-	ID3D11ShaderResourceView *environmentView;
+	ID3D11Texture2D *alienPlanetTexture;
+	ID3D11Texture2D *alienPlanet2Texture;
+	ID3D11Texture2D *sunTexture;
+	ID3D11Texture2D *aircraftTexture;
 
 	//SRV's
+	ID3D11ShaderResourceView *environmentView;
 	ID3D11ShaderResourceView *alienPlanetTextureView;
-	//ID3D11ShaderResourceView *skymapRV;
+	ID3D11ShaderResourceView *alienPlanet2TextureView;
+	ID3D11ShaderResourceView *sunTextureView;
+	ID3D11ShaderResourceView *aircraftTextureView;
 
 	//camera
 	FXMVECTOR eye = { CAMERAEYEX, CAMERAEYEY, CAMERAEYEZ };
 	FXMVECTOR at = { 0.0f, 0.0f, 0.0f };
 	FXMVECTOR up = { 0.0f, 1.0f, 0.0f };
 	XMFLOAT4X4 cameraWM;
-
-	
-
 
 	//timer & debug
 	XTime timer;
@@ -191,41 +195,6 @@ public:
 		XMFLOAT3 norm;
 		XMFLOAT2 uv;
 	};
-
-	struct Light
-	{
-		Light()
-		{
-			ZeroMemory(this, sizeof(Light));
-		}
-		XMFLOAT3 direction;
-		float padding1;
-		XMFLOAT3 position;
-		float range;
-		XMFLOAT3 attenuation;
-		float padding2;
-		XMFLOAT4 ambient;
-		XMFLOAT4 diffuse;
-	};
-
-	struct perFrame
-	{
-		Light light;
-	};
-
-	perFrame constBufferPerFrame;
-
-	//lights
-	Light pointLight;
-
-	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
-	bool reverseX = false;
-	bool reverseY = false;
-	bool fullscreen = false;
-	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
-	bool Run();
-	bool ShutDown();
-
 	SIMPLE_VERTEX cubeVerts[24] =
 	{ 
 		//front
@@ -264,6 +233,44 @@ public:
 		{ { 1.0f,  1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } },
 		{ { 1.0f, -1.0f,  1.0f },{ 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f } }
 	};
+
+	struct Light
+	{
+		Light()
+		{
+			ZeroMemory(this, sizeof(Light));
+		}
+		XMFLOAT3 direction;
+		float padding1;
+		XMFLOAT3 position;
+		float range;
+		XMFLOAT3 attenuation;
+		float padding2;
+		XMFLOAT4 ambient;
+		XMFLOAT4 diffuse;
+	};
+
+	struct perFrame
+	{
+		Light light;
+	};
+
+	perFrame constBufferPerFrame;
+
+	//lights
+	Light pointLight;
+
+	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
+	SIMPLE_VERTEX alienPlanet2[4997];
+	SIMPLE_VERTEX sun[83952];
+	SIMPLE_VERTEX aircraft[33192];
+	bool reverseX = false;
+	bool reverseY = false;
+	bool fullscreen = false;
+	DEMO_APP(HINSTANCE hinst, WNDPROC proc);
+	bool Run();
+	bool ShutDown();
+
 };
 
 //************************************************************
@@ -420,7 +427,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
 	device->CreateVertexShader(SKYMAP_VS, sizeof(SKYMAP_VS), NULL, &cubeMap_VS);
 	device->CreatePixelShader(SKYMAP_PS, sizeof(SKYMAP_PS), NULL, &cubeMap_PS);
-	device->CreatePixelShader(PL_PS, sizeof(PL_PS), NULL, &pl_PS);
+	//device->CreatePixelShader(PL_PS, sizeof(PL_PS), NULL, &pl_PS);
 	
 
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
@@ -522,6 +529,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	//DDS Loader
 	CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
+	CreateDDSTextureFromFile(device, L"planet2.dds", nullptr, &alienPlanet2TextureView);
+	CreateDDSTextureFromFile(device, L"sun.dds", nullptr, &sunTextureView);
+	CreateDDSTextureFromFile(device, L"aircraft_tex.dds", nullptr, &aircraftTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
 
 	timer.Restart();

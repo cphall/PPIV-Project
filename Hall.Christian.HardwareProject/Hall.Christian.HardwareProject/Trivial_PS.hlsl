@@ -10,6 +10,22 @@ struct PS_IN
 	float2 uv : TEXTCOORD;
 };
 
+struct Light
+{
+	float3 direction;
+	float3 position;
+	float range;
+	float3 attenuation;
+	float4 ambient;
+	float4 diffuse;
+	float lighttype;
+};
+
+cbuffer perFrame
+{
+	Light light;
+};
+
 struct PS_OUT
 {
 };
