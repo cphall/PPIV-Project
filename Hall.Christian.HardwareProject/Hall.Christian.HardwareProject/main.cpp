@@ -23,7 +23,6 @@
 #include "MAlienPlanet.h"
 #include "aircraft.h"
 #include "MAlienP2.h"
-#include "Moon.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
@@ -45,7 +44,7 @@ using namespace DirectX;
 #define CAMERAEYEY 1.5f
 #define CAMERAEYEZ 3
 #define LAYOUTSIZE 3
-#define FOV 90.0f
+#define FOV 60.0f
 #define CAMERASPEED 25.0f
 #define ZOOMMIN 10.0f
 #define ZOOMMAX 100.0f
@@ -80,6 +79,7 @@ class DEMO_APP
 	ID3D11Buffer *indexBuffer;
 	ID3D11Buffer *constBuffer;
 	ID3D11Buffer *constBuffer2;
+	ID3D11Buffer *cbPerFrame;
 	ID3D11Buffer *triangleVertBuffer;
 	ID3D11Buffer *cubeIndexBuffer;
 	ID3D11Buffer *cubeVertBuffer;
@@ -135,6 +135,9 @@ class DEMO_APP
 	XMMATRIX matrixScaling;
 	XMFLOAT4X4 cubeWorld; //skymap world matrix
 	XMMATRIX planetWorld = XMMatrixIdentity();
+	XMMATRIX planet2World = XMMatrixIdentity();
+	XMMATRIX sunWorld = XMMatrixIdentity();
+	XMMATRIX aircraftWorld = XMMatrixIdentity();
 	XMMATRIX worldMat = XMMatrixIdentity();
 	//structs
 
@@ -248,6 +251,8 @@ public:
 		float padding2;
 		XMFLOAT4 ambient;
 		XMFLOAT4 diffuse;
+		////padding?
+		//int lightType;
 	};
 
 	struct perFrame
@@ -258,12 +263,12 @@ public:
 	perFrame constBufferPerFrame;
 
 	//lights
-	Light pointLight;
+	//Light pointLight;
 
 	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
-	SIMPLE_VERTEX alienPlanet2[4997];
-	SIMPLE_VERTEX sun[83952];
-	SIMPLE_VERTEX aircraft[33192];
+	SIMPLE_VERTEX *alienPlanet2 = new SIMPLE_VERTEX[4997];
+	SIMPLE_VERTEX *sun = new SIMPLE_VERTEX[4997];
+	SIMPLE_VERTEX *aircraft = new SIMPLE_VERTEX[33192];
 	bool reverseX = false;
 	bool reverseY = false;
 	bool fullscreen = false;
@@ -304,6 +309,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	ShowWindow(window, SW_SHOW);
 	//********************* END WARNING ************************//
+	//alien planet 
 	for (unsigned int i = 0; i < APARRAYSIZE; i++)
 	{
 		alienPlanetModel[i].pos.x = MAlienPlanet_data[i].pos[0];
@@ -312,18 +318,62 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		//uvw
 		alienPlanetModel[i].uv.x = MAlienPlanet_data[i].uvw[0];
 		alienPlanetModel[i].uv.y = MAlienPlanet_data[i].uvw[1];
-		//wolfModel[i].uvw.z = WolfOBJ_data[i].uvw[2];
 		//norms
 		alienPlanetModel[i].norm.x = MAlienPlanet_data[i].nrm[0];
 		alienPlanetModel[i].norm.y = MAlienPlanet_data[i].nrm[1];
 		alienPlanetModel[i].norm.z = MAlienPlanet_data[i].nrm[2];
 	}
 
-	pointLight.position = XMFLOAT3(0.0f,0.0f,0.0f);
-	pointLight.range = 200.0f;
-	pointLight.attenuation = XMFLOAT3(0.0f, 0.2f, 0.0f);
-	pointLight.ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
-	pointLight.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	//alien planet 2
+	for (unsigned int i = 0; i < 4997; i++)
+	{
+		alienPlanet2[i].pos.x = MAlienP2_data[i].pos[0];
+		alienPlanet2[i].pos.y = MAlienP2_data[i].pos[1];
+		alienPlanet2[i].pos.z = MAlienP2_data[i].pos[2];
+		//uvw
+		alienPlanet2[i].uv.x = MAlienP2_data[i].uvw[0];
+		alienPlanet2[i].uv.y = MAlienP2_data[i].uvw[1];
+		//norms
+		alienPlanet2[i].norm.x = MAlienP2_data[i].uvw[0];
+		alienPlanet2[i].norm.y = MAlienP2_data[i].uvw[1];
+		alienPlanet2[i].norm.z = MAlienP2_data[i].uvw[2];
+	}
+
+	//sun
+	for (unsigned int i = 0; i < 4997; i++)
+	{
+		sun[i].pos.x = MAlienP2_data[i].pos[0];
+		sun[i].pos.y = MAlienP2_data[i].pos[1];
+		sun[i].pos.z = MAlienP2_data[i].pos[2];
+		//uvw
+		sun[i].uv.x = MAlienP2_data[i].uvw[0];
+		sun[i].uv.y = MAlienP2_data[i].uvw[1];
+		//norms
+		sun[i].norm.x = MAlienP2_data[i].uvw[0];
+		sun[i].norm.y = MAlienP2_data[i].uvw[1];
+		sun[i].norm.z = MAlienP2_data[i].uvw[2];
+	}
+
+	//spaceship
+	for (unsigned int i = 0; i < 33192; i++)
+	{
+		aircraft[i].pos.x = aircraft_data[i].pos[0];
+		aircraft[i].pos.y = aircraft_data[i].pos[1];
+		aircraft[i].pos.z = aircraft_data[i].pos[2];
+		//uvw
+		aircraft[i].uv.x = aircraft_data[i].uvw[0];
+		aircraft[i].uv.y = aircraft_data[i].uvw[1];
+		//norms
+		aircraft[i].norm.x = aircraft_data[i].nrm[0];
+		aircraft[i].norm.y = aircraft_data[i].nrm[1];
+		aircraft[i].norm.z = aircraft_data[i].nrm[2];
+	}
+
+	constBufferPerFrame.light.position = XMFLOAT3(0.0f,0.0f,0.0f);
+	constBufferPerFrame.light.range = 200.0f;
+	constBufferPerFrame.light.attenuation = XMFLOAT3(0.0f, 0.2f, 0.0f);
+	constBufferPerFrame.light.ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	constBufferPerFrame.light.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -389,6 +439,81 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
 
+	//planet 2
+	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
+	//bufferDesc.MiscFlags = 0;
+
+	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	//InitData.pSysMem = alienPlanet2;
+	//InitData.SysMemPitch = 0;
+	//InitData.SysMemSlicePitch = 0;
+
+	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
+
+
+	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 4997;
+	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//ibufferDesc.MiscFlags = 0;
+
+	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+
+	////sun
+	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
+	//bufferDesc.MiscFlags = 0;
+
+	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	//InitData.pSysMem = sun;
+	//InitData.SysMemPitch = 0;
+	//InitData.SysMemSlicePitch = 0;
+
+	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
+
+
+	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 4997;
+	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//ibufferDesc.MiscFlags = 0;
+
+	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+
+	////spaceship
+	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
+	//bufferDesc.MiscFlags = 0;
+
+	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	//InitData.pSysMem = aircraft;
+	//InitData.SysMemPitch = 0;
+	//InitData.SysMemSlicePitch = 0;
+
+	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
+
+
+	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 33192;
+	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//ibufferDesc.MiscFlags = 0;
+
+	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+
 	//cube
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
 	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -415,12 +540,12 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 
 	device->CreateBuffer(&indexBufferDesc, NULL, &cubeIndexBuffer);
 
-	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	/*ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
 	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	bufferDesc.ByteWidth = sizeof(perFrame);
 	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	bufferDesc.CPUAccessFlags = 0;
-	bufferDesc.MiscFlags = 0;
+	bufferDesc.MiscFlags = 0;*/
 
 	//shaders
 	device->CreateVertexShader(Trivial_VS, sizeof(Trivial_VS), NULL, &vertShader);
@@ -471,6 +596,23 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	cbInitData2.SysMemSlicePitch = 0;
 
 	hr = device->CreateBuffer(&cbufferDesc2, &cbInitData2, &constBuffer2);
+
+	//pixel shader
+	D3D11_BUFFER_DESC cbufferDesc3;
+	ZeroMemory(&cbufferDesc3, sizeof(D3D11_BUFFER_DESC));
+	cbufferDesc3.Usage = D3D11_USAGE_DYNAMIC;
+	cbufferDesc3.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbufferDesc3.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE; // allows cpu to modify our data at runtime
+	cbufferDesc3.MiscFlags = 0;
+	cbufferDesc3.ByteWidth = sizeof(perFrame); //May need to redo this stuff for this buffer?
+
+	D3D11_SUBRESOURCE_DATA cbInitData3;
+	ZeroMemory(&cbInitData3, sizeof(D3D11_SUBRESOURCE_DATA));
+	cbInitData3.pSysMem = &constBufferPerFrame;
+	cbInitData3.SysMemPitch = 0;
+	cbInitData3.SysMemSlicePitch = 0;
+
+	hr = device->CreateBuffer(&cbufferDesc3, &cbInitData3, &cbPerFrame);
 
 	WMToShader.worldMatrix = XMMatrixIdentity();
 	matrixTranslate = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
@@ -575,9 +717,9 @@ bool DEMO_APP::Run()
 
 	XMVECTOR pointLightVec = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	pointLightVec = XMVector3TransformCoord(pointLightVec, planetWorld);
-	pointLight.position.x = XMVectorGetX(pointLightVec);
-	pointLight.position.y = XMVectorGetX(pointLightVec);
-	pointLight.position.z = XMVectorGetX(pointLightVec);
+	constBufferPerFrame.light.position.x = XMVectorGetX(pointLightVec);
+	constBufferPerFrame.light.position.y = XMVectorGetY(pointLightVec);
+	constBufferPerFrame.light.position.z = XMVectorGetZ(pointLightVec);
 
 	if (GetAsyncKeyState('W') & 0x8000)//w
 	{
@@ -758,6 +900,8 @@ bool DEMO_APP::Run()
 	//context->VSSetShader(vertShader, 0, 0);
 	//context->PSSetShader(pl_PS, 0, 0);
 
+
+	//alien planet 1 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	ZeroMemory(&mappedResource, sizeof(mappedResource));
 	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource);
@@ -779,21 +923,37 @@ bool DEMO_APP::Run()
 	memcpy(subResource2.pData, &VPMToShader, sizeof(VPM_TO_VRAM));
 	context->Unmap(constBuffer2, NULL);
 
-	
 	context->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
 	context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-	
+
 	context->VSSetShader(vertShader, NULL, 0);
 	context->PSSetShader(pixShader, NULL, 0);
+	
+	//map lighting
+	D3D11_MAPPED_SUBRESOURCE subResource3;
+	ZeroMemory(&subResource3, sizeof(subResource3));
+	context->Map(cbPerFrame, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource3);
+	memcpy(subResource3.pData, &constBufferPerFrame, sizeof(perFrame));
+	context->Unmap(cbPerFrame, NULL);
+
+	context->PSSetConstantBuffers(0, 1, &cbPerFrame);
 	
 	context->IASetInputLayout(inputLayout);
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView, environmentView };
-	context->PSSetShaderResources(0, 2, texViews);
+	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView, environmentView , alienPlanet2TextureView, sunTextureView, aircraftTextureView};
+	context->PSSetShaderResources(0, 5, texViews);
 
 	context->DrawIndexed(APINDEXSIZE,0, 0);
+
+	//drawing
+	//1. do the matrix math on the object
+
+	//2. update subresource for the object (sphere)
+
+	//3. update constant buffer and set it
+
 
 	//cube WM math
 	WMToShader.worldMatrix = XMMatrixIdentity();
@@ -816,9 +976,6 @@ bool DEMO_APP::Run()
 	context->IASetInputLayout(inputLayout2);
 	//cube topology
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-/*
-	ID3D11ShaderResourceView* texViews2[] = { environmentView };
-	context->PSSetShaderResources(0, 1, texViews2)*/;
 
 	//update constant buffer for cube
 	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
@@ -846,6 +1003,9 @@ bool DEMO_APP::ShutDown()
 	// TODO: PART 1 STEP 6
 
 	swapChain->SetFullscreenState(FALSE, NULL);
+	delete[] aircraft;
+	delete[] sun;
+	delete[] alienPlanet2;
 
 	device->Release();
 	swapChain->Release();
@@ -856,6 +1016,7 @@ bool DEMO_APP::ShutDown()
 	vertBuffer->Release();
 	constBuffer->Release();
 	constBuffer2->Release();
+	cbPerFrame->Release();
 	indexBuffer->Release();
 	depthBuffer->Release();
 	zBuffer->Release();
@@ -868,7 +1029,6 @@ bool DEMO_APP::ShutDown()
 	pixShader->Release();
 	vertShader->Release();
 
-	//skymapRV->Release();
 	inputLayout->Release();
 	inputLayout2->Release();
 

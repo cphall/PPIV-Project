@@ -94,6 +94,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
+      <StackReserveSize>10</StackReserveSize>
     </Link>
     <FxCompile>
       <ShaderModel>4.0</ShaderModel>
@@ -170,7 +171,6 @@
     <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="MAlienP2.h" />
     <ClInclude Include="MAlienPlanet.h" />
-    <ClInclude Include="Moon.h" />
     <ClInclude Include="XTime.h" />
   </ItemGroup>
   <ItemGroup>

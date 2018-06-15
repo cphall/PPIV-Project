@@ -41,9 +41,6 @@
     <ClInclude Include="MAlienP2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Moon.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Trivial_PS.hlsl">
