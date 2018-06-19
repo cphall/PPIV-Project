@@ -22,7 +22,7 @@
 #include "SKYMAP_PS.csh"
 #include "MAlienPlanet.h"
 #include "aircraft.h"
-#include "MAlienP2.h"
+#include "AlienPlanet2.h"
 #include "DDSTextureLoader.h"
 #include <Windows.h>
 #include <windowsx.h>
@@ -55,7 +55,7 @@ using namespace DirectX;
 #define NEARFARMOD 0.025f
 #define APARRAYSIZE 1841
 #define APINDEXSIZE 7800
-#define ASPECTRATIO SCREEN_WIDTH/SCREEN_HEIGHT
+#define ASPECTRATIO SCREEN_WIDTH/(SCREEN_HEIGHT * 0.5f)
 
 //************************************************************
 //************ SIMPLE WINDOWS APP CLASS **********************
@@ -72,6 +72,7 @@ class DEMO_APP
 	ID3D11RenderTargetView *targetView;
 	ID3D11DeviceContext *context;
 	D3D11_VIEWPORT viewport;
+	D3D11_VIEWPORT viewport2;
 	
 	//buffers
 	ID3D11Texture2D *BackBuffer;
@@ -83,6 +84,12 @@ class DEMO_APP
 	ID3D11Buffer *triangleVertBuffer;
 	ID3D11Buffer *cubeIndexBuffer;
 	ID3D11Buffer *cubeVertBuffer;
+	ID3D11Buffer *planet2IndexBuffer;
+	ID3D11Buffer *planet2VertBuffer;
+	ID3D11Buffer *sunIndexBuffer;
+	ID3D11Buffer *sunVertBuffer;
+	ID3D11Buffer *aircraftIndexBuffer;
+	ID3D11Buffer *aircraftVertBuffer;
 
 	//input layouts
 	ID3D11InputLayout *inputLayout;
@@ -97,7 +104,6 @@ class DEMO_APP
 	ID3D11VertexShader *cubeMap_VS;
 	ID3D11PixelShader *cubeMap_PS;
 	ID3D11Buffer* perFrameBuffer;
-	//ID3D11PixelShader *pl_PS;
 	
 	//textures
 	ID3D11DepthStencilView *zBuffer;
@@ -134,6 +140,7 @@ class DEMO_APP
 	XMMATRIX matrixRotateX;
 	XMMATRIX matrixScaling;
 	XMFLOAT4X4 cubeWorld; //skymap world matrix
+	XMFLOAT4X4 aircraft4X4;
 	XMMATRIX planetWorld = XMMatrixIdentity();
 	XMMATRIX planet2World = XMMatrixIdentity();
 	XMMATRIX sunWorld = XMMatrixIdentity();
@@ -161,7 +168,7 @@ class DEMO_APP
 	VPM_TO_VRAM VPMToShader;
 	float fovAngleY = FOV;
 	float width = SCREEN_WIDTH;
-	float height = SCREEN_HEIGHT;
+	float height = SCREEN_HEIGHT / 2;
 	float aspectRatio = width / height;
 	RECT window_size;
 	float NearZ = NEARMIN;
@@ -266,9 +273,9 @@ public:
 	//Light pointLight;
 
 	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
-	SIMPLE_VERTEX *alienPlanet2 = new SIMPLE_VERTEX[4997];
-	SIMPLE_VERTEX *sun = new SIMPLE_VERTEX[4997];
-	SIMPLE_VERTEX *aircraft = new SIMPLE_VERTEX[33192];
+	SIMPLE_VERTEX *alienPlanet2 = new SIMPLE_VERTEX[10962];
+	SIMPLE_VERTEX *sun = new SIMPLE_VERTEX[10962];
+	SIMPLE_VERTEX *aircraft = new SIMPLE_VERTEX[23089];
 	bool reverseX = false;
 	bool reverseY = false;
 	bool fullscreen = false;
@@ -325,37 +332,37 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	}
 
 	//alien planet 2
-	for (unsigned int i = 0; i < 4997; i++)
+	for (unsigned int i = 0; i < 10962; i++)
 	{
-		alienPlanet2[i].pos.x = MAlienP2_data[i].pos[0];
-		alienPlanet2[i].pos.y = MAlienP2_data[i].pos[1];
-		alienPlanet2[i].pos.z = MAlienP2_data[i].pos[2];
+		alienPlanet2[i].pos.x  =AlienPlanet2_data[i].pos[0];
+		alienPlanet2[i].pos.y  =AlienPlanet2_data[i].pos[1];
+		alienPlanet2[i].pos.z  =AlienPlanet2_data[i].pos[2];
 		//uvw
-		alienPlanet2[i].uv.x = MAlienP2_data[i].uvw[0];
-		alienPlanet2[i].uv.y = MAlienP2_data[i].uvw[1];
+		alienPlanet2[i].uv.x   =AlienPlanet2_data[i].uvw[0];
+		alienPlanet2[i].uv.y   =AlienPlanet2_data[i].uvw[1];
 		//norms
-		alienPlanet2[i].norm.x = MAlienP2_data[i].uvw[0];
-		alienPlanet2[i].norm.y = MAlienP2_data[i].uvw[1];
-		alienPlanet2[i].norm.z = MAlienP2_data[i].uvw[2];
+		alienPlanet2[i].norm.x = AlienPlanet2_data[i].uvw[0];
+		alienPlanet2[i].norm.y = AlienPlanet2_data[i].uvw[1];
+		alienPlanet2[i].norm.z = AlienPlanet2_data[i].uvw[2];
 	}
 
 	//sun
-	for (unsigned int i = 0; i < 4997; i++)
+	for (unsigned int i = 0; i < 10962; i++)
 	{
-		sun[i].pos.x = MAlienP2_data[i].pos[0];
-		sun[i].pos.y = MAlienP2_data[i].pos[1];
-		sun[i].pos.z = MAlienP2_data[i].pos[2];
+		sun[i].pos.x = AlienPlanet2_data[i].pos[0];
+		sun[i].pos.y = AlienPlanet2_data[i].pos[1];
+		sun[i].pos.z = AlienPlanet2_data[i].pos[2];
 		//uvw
-		sun[i].uv.x = MAlienP2_data[i].uvw[0];
-		sun[i].uv.y = MAlienP2_data[i].uvw[1];
+		sun[i].uv.x = AlienPlanet2_data[i].uvw[0];
+		sun[i].uv.y = AlienPlanet2_data[i].uvw[1];
 		//norms
-		sun[i].norm.x = MAlienP2_data[i].uvw[0];
-		sun[i].norm.y = MAlienP2_data[i].uvw[1];
-		sun[i].norm.z = MAlienP2_data[i].uvw[2];
+		sun[i].norm.x = AlienPlanet2_data[i].uvw[0];
+		sun[i].norm.y = AlienPlanet2_data[i].uvw[1];
+		sun[i].norm.z = AlienPlanet2_data[i].uvw[2];
 	}
 
 	//spaceship
-	for (unsigned int i = 0; i < 33192; i++)
+	for (unsigned int i = 0; i < 23089; i++)
 	{
 		aircraft[i].pos.x = aircraft_data[i].pos[0];
 		aircraft[i].pos.y = aircraft_data[i].pos[1];
@@ -404,10 +411,18 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
 	viewport.MaxDepth = 1;
 	viewport.MinDepth = 0;
-	viewport.Height = SCREEN_HEIGHT;
+	viewport.Height = SCREEN_HEIGHT/2;
 	viewport.Width = SCREEN_WIDTH;
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
+
+	ZeroMemory(&viewport2, sizeof(D3D11_VIEWPORT));
+	viewport2.MaxDepth = 1;
+	viewport2.MinDepth = 0;
+	viewport2.Height = SCREEN_HEIGHT / 2;
+	viewport2.Width = SCREEN_WIDTH;
+	viewport2.TopLeftX = 0;
+	viewport2.TopLeftY = 450;
 
 	const float PI = 3.1415927;
 	
@@ -440,79 +455,79 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
 
 	//planet 2
-	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
-	//bufferDesc.MiscFlags = 0;
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 10962;
+	bufferDesc.MiscFlags = 0;
 
-	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	//InitData.pSysMem = alienPlanet2;
-	//InitData.SysMemPitch = 0;
-	//InitData.SysMemSlicePitch = 0;
+	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	InitData.pSysMem = alienPlanet2;
+	InitData.SysMemPitch = 0;
+	InitData.SysMemSlicePitch = 0;
 
-	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
-
-
-	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 4997;
-	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//ibufferDesc.MiscFlags = 0;
-
-	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
-
-	////sun
-	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
-	//bufferDesc.MiscFlags = 0;
-
-	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	//InitData.pSysMem = sun;
-	//InitData.SysMemPitch = 0;
-	//InitData.SysMemSlicePitch = 0;
-
-	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
+	hr = device->CreateBuffer(&bufferDesc, &InitData, &planet2VertBuffer);
 
 
-	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 4997;
-	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//ibufferDesc.MiscFlags = 0;
+	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * 26232;
+	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	ibufferDesc.MiscFlags = 0;
 
-	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+	device->CreateBuffer(&ibufferDesc, NULL, &planet2IndexBuffer);
 
-	////spaceship
-	//ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 4997;
-	//bufferDesc.MiscFlags = 0;
+	//sun
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 10962;
+	bufferDesc.MiscFlags = 0;
 
-	//ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
-	//InitData.pSysMem = aircraft;
-	//InitData.SysMemPitch = 0;
-	//InitData.SysMemSlicePitch = 0;
+	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	InitData.pSysMem = sun;
+	InitData.SysMemPitch = 0;
+	InitData.SysMemSlicePitch = 0;
 
-	//hr = device->CreateBuffer(&bufferDesc, &InitData, &vertBuffer);
+	hr = device->CreateBuffer(&bufferDesc, &InitData, &sunVertBuffer);
 
 
-	//ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
-	//ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	//ibufferDesc.ByteWidth = sizeof(unsigned int) * 33192;
-	//ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	//ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//ibufferDesc.MiscFlags = 0;
+	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * 26232;
+	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	ibufferDesc.MiscFlags = 0;
 
-	//device->CreateBuffer(&ibufferDesc, NULL, &indexBuffer);
+	device->CreateBuffer(&ibufferDesc, NULL, &sunIndexBuffer);
+
+	//spaceship
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
+	bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bufferDesc.ByteWidth = sizeof(SIMPLE_VERTEX) * 23089;
+	bufferDesc.MiscFlags = 0;
+
+	ZeroMemory(&InitData, sizeof(D3D11_SUBRESOURCE_DATA));
+	InitData.pSysMem = aircraft;
+	InitData.SysMemPitch = 0;
+	InitData.SysMemSlicePitch = 0;
+
+	hr = device->CreateBuffer(&bufferDesc, &InitData, &aircraftVertBuffer);
+
+
+	ZeroMemory(&ibufferDesc, sizeof(D3D11_BUFFER_DESC));
+	ibufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	ibufferDesc.ByteWidth = sizeof(unsigned int) * 50316;
+	ibufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	ibufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	ibufferDesc.MiscFlags = 0;
+
+	device->CreateBuffer(&ibufferDesc, NULL, &aircraftIndexBuffer);
 
 	//cube
 	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
@@ -552,7 +567,6 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreatePixelShader(Trivial_PS, sizeof(Trivial_PS), NULL, &pixShader);
 	device->CreateVertexShader(SKYMAP_VS, sizeof(SKYMAP_VS), NULL, &cubeMap_VS);
 	device->CreatePixelShader(SKYMAP_PS, sizeof(SKYMAP_PS), NULL, &cubeMap_PS);
-	//device->CreatePixelShader(PL_PS, sizeof(PL_PS), NULL, &pl_PS);
 	
 
 	//TODO: changed to float4 now so we need to work with that as well as adding in uv as third element in array
@@ -670,10 +684,10 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	device->CreateDepthStencilState(&dsDesc, &DSLessEqual);
 
 	//DDS Loader
-	CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", nullptr, &alienPlanetTextureView);
-	CreateDDSTextureFromFile(device, L"planet2.dds", nullptr, &alienPlanet2TextureView);
-	CreateDDSTextureFromFile(device, L"sun.dds", nullptr, &sunTextureView);
-	CreateDDSTextureFromFile(device, L"aircraft_tex.dds", nullptr, &aircraftTextureView);
+	CreateDDSTextureFromFile(device, L"alienplanet_tex.dds", (ID3D11Resource**)&alienPlanetTexture, &alienPlanetTextureView);
+	CreateDDSTextureFromFile(device, L"planet2.dds", (ID3D11Resource**)&alienPlanet2Texture, &alienPlanet2TextureView);
+	CreateDDSTextureFromFile(device, L"sun.dds", (ID3D11Resource**)&sunTexture, &sunTextureView);
+	CreateDDSTextureFromFile(device, L"aircraft_tex.dds", (ID3D11Resource**)&aircraftTexture, &aircraftTextureView);
 	CreateDDSTextureFromFile(device, L"CubeMap.dds", (ID3D11Resource**)&environmentTexture, &environmentView);
 
 	timer.Restart();
@@ -687,27 +701,10 @@ bool DEMO_APP::Run()
 {
 	timer.Signal();
 
-	//if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_RETURN) & 0x8000)
-	//{
-	//	if (!fullscreen) //windowed -> fullscreen
-	//	{
-	//		fullscreen = true;
-	//		swapChain->SetFullscreenState(true, NULL);
-	//		context->OMSetRenderTargets(0, 0, 0);
-	//		targetView->Release();
-
-	//	}
-	//	else //fullscreen -> windowed
-	//	{
-	//		fullscreen = false;
-	//		swapChain->SetFullscreenState(false, NULL);
-	//	}
-	//}
-
 	matrixRotateX = XMMatrixIdentity();
-	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 20));
+	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 5));
 
-	//planetWorld = XMMatrixScaling(0.5f, 1.0f, 1.0f);
+	planetWorld = XMMatrixScaling(10.0f, 10.0f, 10.0f);
 	planetWorld = matrixTranslate * matrixRotateX;
 	WMToShader.worldMatrix = planetWorld;
 	VPMToShader.rotMatrix = matrixRotateX;
@@ -869,8 +866,15 @@ bool DEMO_APP::Run()
 	cubeWorld._42 = cameraPos.y;
 	cubeWorld._43 = cameraPos.z;
 	cubeWorld._44 = cameraPos.w;
+	aircraft4X4._41 = cameraPos.x;
+	aircraft4X4._42 = cameraPos.y;
+	aircraft4X4._43 = cameraPos.z;
+	aircraft4X4._44 = cameraPos.w;
+	/*aircraftWorld = XMLoadFloat4x4(&aircraft4X4);
+	aircraftWorld*/
 	XMMATRIX cube = XMLoadFloat4x4(&cubeWorld);
 	XMMATRIX camera = XMLoadFloat4x4(&cameraWM);
+	//XMMATRIX preInverseCam = XMLoadFloat4x4(&cameraWM);
 
 	//store the 4th row of the camera now and save an identity matrix to it
 	//set the cube WM to this new matrix
@@ -942,8 +946,8 @@ bool DEMO_APP::Run()
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
 	
-	ID3D11ShaderResourceView* texViews[] = { alienPlanetTextureView, environmentView , alienPlanet2TextureView, sunTextureView, aircraftTextureView};
-	context->PSSetShaderResources(0, 5, texViews);
+	ID3D11ShaderResourceView* planet1TexViews[] = { alienPlanetTextureView, environmentView };
+	context->PSSetShaderResources(0, 2, planet1TexViews);
 
 	context->DrawIndexed(APINDEXSIZE,0, 0);
 
@@ -953,6 +957,90 @@ bool DEMO_APP::Run()
 	//2. update subresource for the object (sphere)
 
 	//3. update constant buffer and set it
+
+	//planet 2
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	planet2World = XMMatrixTranslation(20.0f, 5.0f, 20.0f);
+	planet2World = planet2World * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.5f)), planetWorld);
+	matrixScaling = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+	planet2World = planet2World * matrixScaling;
+	WMToShader.worldMatrix = planet2World;
+
+	D3D11_MAPPED_SUBRESOURCE planet2Resource;
+	ZeroMemory(&planet2Resource, sizeof(planet2Resource));
+	context->Map(planet2IndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &planet2Resource);
+	memcpy(planet2Resource.pData, AlienPlanet2_indicies, sizeof(AlienPlanet2_indicies));
+	context->Unmap(planet2IndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &planet2VertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(planet2IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* planet2TexView[] = { alienPlanet2TextureView };
+	context->PSSetShaderResources(0, 1, planet2TexView);
+
+	context->DrawIndexed(26232, 0, 0);
+
+	//sun
+
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	sunWorld = XMMatrixTranslation(10.0f, 0.0f, 0.0f);
+	sunWorld = sunWorld * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.2f)), planetWorld);
+	matrixScaling = XMMatrixScaling(10.0f, 10.0f, 10.0f);
+	sunWorld = sunWorld * matrixScaling;
+	WMToShader.worldMatrix = sunWorld;
+
+	D3D11_MAPPED_SUBRESOURCE sunResource;
+	ZeroMemory(&sunResource, sizeof(sunResource));
+	context->Map(sunIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &sunResource);
+	memcpy(sunResource.pData, AlienPlanet2_indicies, sizeof(AlienPlanet2_indicies));
+	context->Unmap(sunIndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &planet2VertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(sunIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* sunTexView[] = { sunTextureView };
+	context->PSSetShaderResources(0, 1, sunTexView);
+
+	context->DrawIndexed(26232, 0, 0);
+
+	//aircraft
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	aircraftWorld = XMMatrixTranslation(-20.0f, 0.0f, 5.0f);
+	matrixScaling = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+	aircraftWorld = aircraftWorld * matrixScaling;
+	WMToShader.worldMatrix = aircraftWorld;
+
+	D3D11_MAPPED_SUBRESOURCE aircraftResource;
+	ZeroMemory(&aircraftResource, sizeof(aircraftResource));
+	context->Map(aircraftIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &aircraftResource);
+	memcpy(aircraftResource.pData, aircraft_indicies, sizeof(aircraft_indicies));
+	context->Unmap(aircraftIndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &aircraftVertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(aircraftIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* aircraftTexView[] = { aircraftTextureView };
+	context->PSSetShaderResources(0, 1, aircraftTexView);
+
+	context->DrawIndexed(50316, 0, 0);
 
 
 	//cube WM math
@@ -966,6 +1054,186 @@ bool DEMO_APP::Run()
 	ZeroMemory(&cubeResource, sizeof(cubeResource));
 	context->Map(cubeIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &cubeResource);
 	memcpy(cubeResource.pData, cubeIndices, sizeof(cubeIndices));
+	context->Unmap(cubeIndexBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+	context->VSSetConstantBuffers(1, 1, &constBuffer2);
+	context->IASetVertexBuffers(0, 1, &cubeVertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(cubeIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	context->IASetInputLayout(inputLayout2);
+	//cube topology
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//update constant buffer for cube
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetShader(cubeMap_VS, NULL, 0);
+	context->PSSetShader(cubeMap_PS, NULL, 0);
+	context->OMSetDepthStencilState(DSLessEqual, 0);
+	context->RSSetState(RSCullNone);
+	context->DrawIndexed(36, 0, 0);
+	context->OMSetDepthStencilState(NULL, 0);
+	context->ClearDepthStencilView(zBuffer, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+	//second viewport draws
+	context->RSSetViewports(1, &viewport2);
+
+	//alien planet 1 
+
+	WMToShader.worldMatrix = XMMatrixIdentity(); //we need to set all of our objects to the proper view
+	matrixRotateX = XMMatrixIdentity();
+	matrixRotateX = XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 5));
+
+	//TODO: Scale everything down so we look like the bottom is an overview of solar system. divide by 10
+	XMMATRIX scale = XMMatrixScaling(0.25f, 0.25f, 0.25f);
+	planetWorld = matrixTranslate * matrixRotateX;
+	planetWorld = planetWorld * scale;
+	WMToShader.worldMatrix = planetWorld;
+	VPMToShader.rotMatrix = matrixRotateX;
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource2;
+	ZeroMemory(&mappedResource2, sizeof(mappedResource2));
+	context->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &mappedResource2);
+	memcpy(mappedResource2.pData, MAlienPlanet_indicies, sizeof(MAlienPlanet_indicies));
+	context->Unmap(indexBuffer, NULL);
+
+
+	D3D11_MAPPED_SUBRESOURCE subResource4;
+	ZeroMemory(&subResource4, sizeof(subResource4));
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource4);
+	memcpy(subResource4.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	D3D11_MAPPED_SUBRESOURCE subResource5;
+	ZeroMemory(&subResource5, sizeof(subResource5));
+	context->Map(constBuffer2, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource5);
+	memcpy(subResource5.pData, &VPMToShader, sizeof(VPM_TO_VRAM));
+	context->Unmap(constBuffer2, NULL);
+
+	context->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	context->VSSetShader(vertShader, NULL, 0);
+	context->PSSetShader(pixShader, NULL, 0);
+
+	D3D11_MAPPED_SUBRESOURCE subResource6;
+	ZeroMemory(&subResource6, sizeof(subResource6));
+	context->Map(cbPerFrame, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource6);
+	memcpy(subResource6.pData, &constBufferPerFrame, sizeof(perFrame));
+	context->Unmap(cbPerFrame, NULL);
+
+	context->PSSetConstantBuffers(0, 1, &cbPerFrame);
+
+	context->IASetInputLayout(inputLayout);
+
+	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
+
+	ID3D11ShaderResourceView* planet1TexViews2[] = { alienPlanetTextureView, environmentView };
+	context->PSSetShaderResources(0, 2, planet1TexViews2);
+
+	context->DrawIndexed(APINDEXSIZE, 0, 0);
+
+	//planet 2
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	planet2World = XMMatrixTranslation(80.0f, 5.0f, 20.0f);
+	planet2World = planet2World * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.5f)), planetWorld);
+	matrixScaling = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+	planet2World = planet2World * matrixScaling;
+	WMToShader.worldMatrix = planet2World;
+
+	D3D11_MAPPED_SUBRESOURCE planet2Resource2;
+	ZeroMemory(&planet2Resource2, sizeof(planet2Resource2));
+	context->Map(planet2IndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &planet2Resource2);
+	memcpy(planet2Resource2.pData, AlienPlanet2_indicies, sizeof(AlienPlanet2_indicies));
+	context->Unmap(planet2IndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &planet2VertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(planet2IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* planet2TexView2[] = { alienPlanet2TextureView };
+	context->PSSetShaderResources(0, 1, planet2TexView2);
+
+	context->DrawIndexed(26232, 0, 0);
+
+	//sun
+
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	sunWorld = XMMatrixTranslation(10.0f, 0.0f, 0.0f);
+	sunWorld = sunWorld * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.2f)), planetWorld);
+	matrixScaling = XMMatrixScaling(2.5f, 2.5f, 2.5f);
+	sunWorld = sunWorld * matrixScaling;
+	WMToShader.worldMatrix = sunWorld;
+
+	D3D11_MAPPED_SUBRESOURCE sunResource2;
+	ZeroMemory(&sunResource2, sizeof(sunResource2));
+	context->Map(sunIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &sunResource2);
+	memcpy(sunResource2.pData, AlienPlanet2_indicies, sizeof(AlienPlanet2_indicies));
+	context->Unmap(sunIndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &planet2VertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(sunIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* sunTexView2[] = { sunTextureView };
+	context->PSSetShaderResources(0, 1, sunTexView2);
+
+	context->DrawIndexed(26232, 0, 0);
+
+	//aircraft
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	aircraftWorld = XMMatrixTranslation(-30.0f, 0.0f, 5.0f);
+	matrixScaling = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+	aircraftWorld = aircraftWorld * matrixScaling;
+	WMToShader.worldMatrix = aircraftWorld;
+
+	D3D11_MAPPED_SUBRESOURCE aircraftResource2;
+	ZeroMemory(&aircraftResource2, sizeof(aircraftResource2));
+	context->Map(aircraftIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &aircraftResource2);
+	memcpy(aircraftResource2.pData, aircraft_indicies, sizeof(aircraft_indicies));
+	context->Unmap(aircraftIndexBuffer, NULL);
+
+	context->Map(constBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource);
+	memcpy(subResource.pData, &WMToShader, sizeof(WM_TO_VRAM));
+	context->Unmap(constBuffer, NULL);
+
+	context->VSSetConstantBuffers(0, 1, &constBuffer);
+
+	context->IASetVertexBuffers(0, 1, &aircraftVertBuffer, &stride, &offset);
+	context->IASetIndexBuffer(aircraftIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+	ID3D11ShaderResourceView* aircraftTexView2[] = { aircraftTextureView };
+	context->PSSetShaderResources(0, 1, aircraftTexView2);
+
+	context->DrawIndexed(50316, 0, 0);
+
+
+	//cube WM math
+	WMToShader.worldMatrix = XMMatrixIdentity();
+	matrixScaling = XMMatrixScaling(1000.0f, 1000.0f, 1000.0f);
+	cube = matrixScaling;
+	WMToShader.worldMatrix = cube;
+
+	//update cuberesource
+	D3D11_MAPPED_SUBRESOURCE cubeResource2;
+	ZeroMemory(&cubeResource2, sizeof(cubeResource2));
+	context->Map(cubeIndexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &cubeResource2);
+	memcpy(cubeResource2.pData, cubeIndices, sizeof(cubeIndices));
 	context->Unmap(cubeIndexBuffer, NULL);
 
 	context->VSSetConstantBuffers(0, 1, &constBuffer);
@@ -1023,6 +1291,12 @@ bool DEMO_APP::ShutDown()
 	cubeIndexBuffer->Release();
 	cubeVertBuffer->Release();
 	perFrameBuffer->Release();
+	planet2IndexBuffer->Release();
+	planet2VertBuffer->Release();
+	sunIndexBuffer->Release();
+	sunVertBuffer->Release();
+	aircraftIndexBuffer->Release();
+	aircraftVertBuffer->Release();
 
 	cubeMap_VS->Release();
 	cubeMap_PS->Release();

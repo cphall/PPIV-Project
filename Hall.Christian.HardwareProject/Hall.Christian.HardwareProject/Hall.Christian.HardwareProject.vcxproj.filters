@@ -38,7 +38,7 @@
     <ClInclude Include="aircraft.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MAlienP2.h">
+    <ClInclude Include="AlienPlanet2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

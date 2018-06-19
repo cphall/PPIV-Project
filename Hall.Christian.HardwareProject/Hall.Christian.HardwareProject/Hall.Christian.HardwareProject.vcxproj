@@ -168,8 +168,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aircraft.h" />
+    <ClInclude Include="AlienPlanet2.h" />
     <ClInclude Include="DDSTextureLoader.h" />
-    <ClInclude Include="MAlienP2.h" />
     <ClInclude Include="MAlienPlanet.h" />
     <ClInclude Include="XTime.h" />
   </ItemGroup>
