@@ -386,7 +386,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	constBufferPerFrame.light.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	constBufferPerFrame.light.position2 = XMFLOAT3(0.0f, 0.0f, 30.0f);
-	constBufferPerFrame.light.direction = XMFLOAT3(0.25f, 0.5f, -1.0f);
+	constBufferPerFrame.light.direction = XMFLOAT3(0.25f, 1.0f, -1.0f);
 	constBufferPerFrame.light.ambient2 = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	constBufferPerFrame.light.diffuse2 = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
