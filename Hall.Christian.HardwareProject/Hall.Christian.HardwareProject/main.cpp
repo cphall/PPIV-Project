@@ -258,8 +258,10 @@ public:
 		float padding2;
 		XMFLOAT4 ambient;
 		XMFLOAT4 diffuse;
-		////padding?
-		//int lightType;
+		XMFLOAT4 ambient2;
+		XMFLOAT4 diffuse2;
+		float padding3;
+		XMFLOAT3 position2;
 	};
 
 	struct perFrame
@@ -270,7 +272,8 @@ public:
 	perFrame constBufferPerFrame;
 
 	//lights
-	//Light pointLight;
+	/*Light pointLight;
+	Light dirLight;*/
 
 	SIMPLE_VERTEX alienPlanetModel[APARRAYSIZE];
 	SIMPLE_VERTEX *alienPlanet2 = new SIMPLE_VERTEX[10962];
@@ -341,9 +344,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		alienPlanet2[i].uv.x   =AlienPlanet2_data[i].uvw[0];
 		alienPlanet2[i].uv.y   =AlienPlanet2_data[i].uvw[1];
 		//norms
-		alienPlanet2[i].norm.x = AlienPlanet2_data[i].uvw[0];
-		alienPlanet2[i].norm.y = AlienPlanet2_data[i].uvw[1];
-		alienPlanet2[i].norm.z = AlienPlanet2_data[i].uvw[2];
+		alienPlanet2[i].norm.x = AlienPlanet2_data[i].nrm[0];
+		alienPlanet2[i].norm.y = AlienPlanet2_data[i].nrm[1];
+		alienPlanet2[i].norm.z = AlienPlanet2_data[i].nrm[2];
 	}
 
 	//sun
@@ -356,9 +359,9 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 		sun[i].uv.x = AlienPlanet2_data[i].uvw[0];
 		sun[i].uv.y = AlienPlanet2_data[i].uvw[1];
 		//norms
-		sun[i].norm.x = AlienPlanet2_data[i].uvw[0];
-		sun[i].norm.y = AlienPlanet2_data[i].uvw[1];
-		sun[i].norm.z = AlienPlanet2_data[i].uvw[2];
+		sun[i].norm.x = AlienPlanet2_data[i].nrm[0];
+		sun[i].norm.y = AlienPlanet2_data[i].nrm[1];
+		sun[i].norm.z = AlienPlanet2_data[i].nrm[2];
 	}
 
 	//spaceship
@@ -379,8 +382,13 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	constBufferPerFrame.light.position = XMFLOAT3(0.0f,0.0f,0.0f);
 	constBufferPerFrame.light.range = 200.0f;
 	constBufferPerFrame.light.attenuation = XMFLOAT3(0.0f, 0.2f, 0.0f);
-	constBufferPerFrame.light.ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	constBufferPerFrame.light.ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	constBufferPerFrame.light.diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	constBufferPerFrame.light.position2 = XMFLOAT3(0.0f, 0.0f, 30.0f);
+	constBufferPerFrame.light.direction = XMFLOAT3(0.25f, 0.5f, -1.0f);
+	constBufferPerFrame.light.ambient2 = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+	constBufferPerFrame.light.diffuse2 = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	DXGI_SWAP_CHAIN_DESC swapDesc;
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
@@ -612,6 +620,7 @@ DEMO_APP::DEMO_APP(HINSTANCE hinst, WNDPROC proc)
 	hr = device->CreateBuffer(&cbufferDesc2, &cbInitData2, &constBuffer2);
 
 	//pixel shader
+	//point light
 	D3D11_BUFFER_DESC cbufferDesc3;
 	ZeroMemory(&cbufferDesc3, sizeof(D3D11_BUFFER_DESC));
 	cbufferDesc3.Usage = D3D11_USAGE_DYNAMIC;
@@ -712,11 +721,20 @@ bool DEMO_APP::Run()
 	VPMToShader.lightClr = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 	VPMToShader.ambientClr = XMFLOAT4(0.2, 0.2f, 0.2f, 1.0f);
 
+	//point light follow sun
 	XMVECTOR pointLightVec = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-	pointLightVec = XMVector3TransformCoord(pointLightVec, planetWorld);
+	pointLightVec = XMVector3TransformCoord(pointLightVec, sunWorld);
 	constBufferPerFrame.light.position.x = XMVectorGetX(pointLightVec);
 	constBufferPerFrame.light.position.y = XMVectorGetY(pointLightVec);
 	constBufferPerFrame.light.position.z = XMVectorGetZ(pointLightVec);
+
+		//directional light follow moon
+	XMVECTOR dirLightVec = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	dirLightVec = XMVector3TransformCoord(dirLightVec, planet2World);
+	constBufferPerFrame.light.position2.x = XMVectorGetX(dirLightVec);
+	constBufferPerFrame.light.position2.y = XMVectorGetY(dirLightVec);
+	constBufferPerFrame.light.position2.z = XMVectorGetZ(dirLightVec);
+
 
 	if (GetAsyncKeyState('W') & 0x8000)//w
 	{
@@ -941,7 +959,7 @@ bool DEMO_APP::Run()
 	context->Unmap(cbPerFrame, NULL);
 
 	context->PSSetConstantBuffers(0, 1, &cbPerFrame);
-	
+
 	context->IASetInputLayout(inputLayout);
 	
 	context->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //or linestrip
@@ -951,18 +969,11 @@ bool DEMO_APP::Run()
 
 	context->DrawIndexed(APINDEXSIZE,0, 0);
 
-	//drawing
-	//1. do the matrix math on the object
-
-	//2. update subresource for the object (sphere)
-
-	//3. update constant buffer and set it
-
 	//planet 2
 	WMToShader.worldMatrix = XMMatrixIdentity();
 	planet2World = XMMatrixTranslation(20.0f, 5.0f, 20.0f);
 	planet2World = planet2World * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.5f)), planetWorld);
-	matrixScaling = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+	matrixScaling = XMMatrixScaling(1.0f, 1.0f, 1.0f);
 	planet2World = planet2World * matrixScaling;
 	WMToShader.worldMatrix = planet2World;
 
@@ -1043,6 +1054,8 @@ bool DEMO_APP::Run()
 	context->DrawIndexed(50316, 0, 0);
 
 
+
+
 	//cube WM math
 	WMToShader.worldMatrix = XMMatrixIdentity();
 	matrixScaling = XMMatrixScaling(1000.0f, 1000.0f, 1000.0f);
@@ -1121,6 +1134,7 @@ bool DEMO_APP::Run()
 	context->VSSetShader(vertShader, NULL, 0);
 	context->PSSetShader(pixShader, NULL, 0);
 
+	//lighting for second viewport
 	D3D11_MAPPED_SUBRESOURCE subResource6;
 	ZeroMemory(&subResource6, sizeof(subResource6));
 	context->Map(cbPerFrame, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &subResource6);
@@ -1140,9 +1154,9 @@ bool DEMO_APP::Run()
 
 	//planet 2
 	WMToShader.worldMatrix = XMMatrixIdentity();
-	planet2World = XMMatrixTranslation(80.0f, 5.0f, 20.0f);
+	planet2World = XMMatrixTranslation(20.0f, 5.0f, 20.0f);
 	planet2World = planet2World * XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(timer.TotalTime() * 0.5f)), planetWorld);
-	matrixScaling = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+	matrixScaling = XMMatrixScaling(0.5f, 0.5f, 0.5f);
 	planet2World = planet2World * matrixScaling;
 	WMToShader.worldMatrix = planet2World;
 
@@ -1198,7 +1212,7 @@ bool DEMO_APP::Run()
 	//aircraft
 	WMToShader.worldMatrix = XMMatrixIdentity();
 	aircraftWorld = XMMatrixTranslation(-30.0f, 0.0f, 5.0f);
-	matrixScaling = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+	matrixScaling = XMMatrixScaling(0.1f, 0.1f, 0.1f);
 	aircraftWorld = aircraftWorld * matrixScaling;
 	WMToShader.worldMatrix = aircraftWorld;
 
@@ -1290,7 +1304,6 @@ bool DEMO_APP::ShutDown()
 	zBuffer->Release();
 	cubeIndexBuffer->Release();
 	cubeVertBuffer->Release();
-	perFrameBuffer->Release();
 	planet2IndexBuffer->Release();
 	planet2VertBuffer->Release();
 	sunIndexBuffer->Release();
@@ -1309,8 +1322,10 @@ bool DEMO_APP::ShutDown()
 	DSLessEqual->Release();
 	RSCullNone->Release();
 
-	/*alienPlanetTexture->Release();*/
 	alienPlanetTextureView->Release();
+	alienPlanet2TextureView->Release();
+	sunTextureView->Release();
+	aircraftTextureView->Release();
 	UnregisterClass( L"DirectXApplication", application ); 
 	return true;
 }
